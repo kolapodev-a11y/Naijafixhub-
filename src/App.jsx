@@ -24,7 +24,7 @@ function App() {
         </div>
       </header>
 
-      {/* Smart Match Quick Request Box */}
+      {/* Smart Match Quick Request */}
       <div className="px-6 -mt-6 relative z-10">
         <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-3">Need a fix today?</h2>
