@@ -5,6 +5,7 @@ import CategoryGrid from './components/home/CategoryGrid';
 function App() {
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Navbar */}
       <Navbar />
 
       {/* Hero Section */}
@@ -23,7 +24,7 @@ function App() {
         </div>
       </header>
 
-      {/* Smart Match Quick Request */}
+      {/* Smart Match Quick Request Box */}
       <div className="px-6 -mt-6 relative z-10">
         <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-xl p-6">
           <h2 className="text-lg font-semibold mb-3">Need a fix today?</h2>
@@ -31,16 +32,18 @@ function App() {
           <input 
             type="text" 
             placeholder="e.g. Plumber in Akure urgently" 
-            className="w-full border border-gray-300 rounded-2xl px-5 py-4 focus:outline-none focus:border-primary"
+            className="w-full border border-gray-300 rounded-2xl px-5 py-4 focus:outline-none focus:border-primary text-base"
           />
         </div>
       </div>
 
+      {/* State Filters */}
       <div className="pt-10 pb-6">
         <StateFilterChips />
       </div>
 
-      <div className="pb-12">
+      {/* Categories */}
+      <div className="pb-12 px-6">
         <CategoryGrid />
       </div>
 
