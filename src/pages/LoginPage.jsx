@@ -1,133 +1,111 @@
-import React, { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { useAuth } from '../context/AuthContext'
-import toast from 'react-hot-toast'
-import { FiMail, FiLock, FiEye, FiEyeOff, FiAlertCircle } from 'react-icons/fi'
+// FIX #1 – Better error messages for Google login failure.
+
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
+import AuthShell from '../components/AuthShell';
+import GoogleAuthButton from '../components/GoogleAuthButton';
 
 const schema = z.object({
-  email: z.string().email('Please enter a valid email'),
+  email: z.string().email('Enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-})
+});
 
 export default function LoginPage() {
-  const { login } = useAuth()
-  const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const redirect = searchParams.get('redirect') || '/'
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const { login, googleLogin } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const form = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: { email: '', password: '' },
+  });
 
-  const { register, handleSubmit, formState: { errors } } = useForm({ resolver: zodResolver(schema) })
+  const destination = location.state?.from?.pathname || '/';
 
-  const onSubmit = async (data) => {
-    setLoading(true)
+  async function onSubmit(values) {
     try {
-      await login(data)
-      toast.success('Welcome back! 👋')
-      navigate(redirect)
+      await login(values);
+      toast.success('Welcome back!');
+      navigate(destination, { replace: true });
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Login failed. Check your credentials.')
-    } finally {
-      setLoading(false)
+      toast.error(err.response?.data?.message || 'Login failed. Please check your credentials.');
+    }
+  }
+
+  async function handleGoogleLogin({ accessToken }) {
+    try {
+      await googleLogin({ accessToken, mode: 'login' });
+      toast.success('Google login successful!');
+      navigate(destination, { replace: true });
+    } catch (err) {
+      // Provide a helpful, specific message when possible
+      const msg =
+        err.response?.data?.message ||
+        err.message ||
+        'Google login failed. Please try again.';
+      toast.error(msg);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold">NF</span>
-            </div>
-            <span className="text-primary-700 font-extrabold text-2xl">NaijaFixHub</span>
+    <AuthShell
+      mode="login"
+      title="Login to PeezuHub"
+      subtitle="Use your email/password or continue with Google. The Google button now always opens account selection, so you can switch emails cleanly."
+      footer={
+        <p className="text-sm text-slate-500">
+          No account yet?{' '}
+          <Link className="font-semibold text-brand-700" to="/register">
+            Create one
           </Link>
-          <h1 className="text-2xl font-bold text-gray-800">Welcome back</h1>
-          <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
-        </div>
-
-        <div className="card p-8">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div>
-              <label className="label">Email Address</label>
-              <div className="relative">
-                <FiMail size={16} className="absolute left-3 top-3.5 text-gray-400" />
-                <input
-                  {...register('email')}
-                  type="email"
-                  className={`input-field pl-9 ${errors.email ? 'ring-2 ring-red-300 border-red-300' : ''}`}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                />
-              </div>
-              {errors.email && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                  <FiAlertCircle size={11} /> {errors.email.message}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <label className="label mb-0">Password</label>
-                <Link to="/forgot-password" className="text-xs text-primary-600 hover:text-primary-700">
-                  Forgot password?
-                </Link>
-              </div>
-              <div className="relative">
-                <FiLock size={16} className="absolute left-3 top-3.5 text-gray-400" />
-                <input
-                  {...register('password')}
-                  type={showPassword ? 'text' : 'password'}
-                  className={`input-field pl-9 pr-9 ${errors.password ? 'ring-2 ring-red-300 border-red-300' : ''}`}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                </button>
-              </div>
-              {errors.password && (
-                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
-                  <FiAlertCircle size={11} /> {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-primary w-full flex items-center justify-center gap-2 py-3.5"
-            >
-              {loading && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-              {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-          </form>
-
-          <div className="mt-6 text-center">
-            <p className="text-gray-500 text-sm">
-              Don't have an account?{' '}
-              <Link to={`/register${redirect !== '/' ? `?redirect=${redirect}` : ''}`}
-                className="text-primary-600 font-semibold hover:text-primary-700">
-                Join Free
-              </Link>
-            </p>
-          </div>
-        </div>
-
-        {/* Admin note */}
-        <p className="text-center text-xs text-gray-400 mt-4">
-          Admin access: <a href="mailto:peezutech@gmail.com" className="text-primary-500">peezutech@gmail.com</a>
         </p>
+      }
+    >
+      <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
+        <div>
+          <input className="input" placeholder="Email" {...form.register('email')} />
+          {form.formState.errors.email && (
+            <p className="mt-2 text-sm text-red-600">{form.formState.errors.email.message}</p>
+          )}
+        </div>
+
+        <div>
+          <input
+            type="password"
+            className="input"
+            placeholder="Password"
+            {...form.register('password')}
+          />
+          {form.formState.errors.password && (
+            <p className="mt-2 text-sm text-red-600">{form.formState.errors.password.message}</p>
+          )}
+        </div>
+
+        <button className="btn-primary w-full" type="submit">
+          Login
+        </button>
+      </form>
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-slate-200" />
+        <span className="text-xs uppercase tracking-wide text-slate-400">or</span>
+        <div className="h-px flex-1 bg-slate-200" />
       </div>
-    </div>
-  )
+
+      <GoogleAuthButton
+        mode="login"
+        onAuthenticated={handleGoogleLogin}
+        onError={(error) =>
+          toast.error(
+            error?.response?.data?.message ||
+              error?.message ||
+              'Google login failed. Please try again.',
+          )
+        }
+      />
+    </AuthShell>
+  );
 }
