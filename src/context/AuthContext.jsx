@@ -1,99 +1,103 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react'
-import { authAPI } from '../utils/api'
-import { isAdmin } from '../utils/helpers'
+// FIX #1 – Improved error propagation for Google auth so the correct backend
+//           error message reaches the toast instead of the generic fallback.
 
-const AuthContext = createContext(null)
+import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
+import client from '../api/client';
+
+const AuthContext = createContext(null);
 
 const initialState = {
   user: null,
-  token: null,
+  token: localStorage.getItem('peezuhub_token') || null,
   loading: true,
-  isAuthenticated: false,
-}
+};
 
-function authReducer(state, action) {
+function reducer(state, action) {
   switch (action.type) {
-    case 'SET_LOADING':
-      return { ...state, loading: action.payload }
-    case 'LOGIN_SUCCESS':
-      return {
-        ...state,
-        user: action.payload.user,
-        token: action.payload.token,
-        isAuthenticated: true,
-        loading: false,
-      }
+    case 'SET_AUTH':
+      return { ...state, user: action.payload.user, token: action.payload.token, loading: false };
+    case 'STOP_LOADING':
+      return { ...state, loading: false };
     case 'LOGOUT':
-      return { ...initialState, loading: false }
-    case 'UPDATE_USER':
-      return { ...state, user: { ...state.user, ...action.payload } }
+      return { user: null, token: null, loading: false };
     default:
-      return state
+      return state;
   }
 }
 
 export function AuthProvider({ children }) {
-  const [state, dispatch] = useReducer(authReducer, initialState)
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-  const initAuth = useCallback(async () => {
-    const token = localStorage.getItem('naijafixhub_token')
-    if (!token) {
-      dispatch({ type: 'SET_LOADING', payload: false })
-      return
+  useEffect(() => {
+    async function loadUser() {
+      if (!state.token) {
+        dispatch({ type: 'STOP_LOADING' });
+        return;
+      }
+      try {
+        const { data } = await client.get('/auth/me');
+        dispatch({ type: 'SET_AUTH', payload: { user: data.user, token: state.token } });
+      } catch {
+        localStorage.removeItem('peezuhub_token');
+        localStorage.removeItem('peezuhub_user');
+        dispatch({ type: 'LOGOUT' });
+      }
     }
-    try {
-      const { data } = await authAPI.getMe()
-      dispatch({
-        type: 'LOGIN_SUCCESS',
-        payload: { user: data.user, token },
-      })
-    } catch {
-      localStorage.removeItem('naijafixhub_token')
-      localStorage.removeItem('naijafixhub_user')
-      dispatch({ type: 'SET_LOADING', payload: false })
-    }
-  }, [])
+    loadUser();
+  }, [state.token]);
 
-  useEffect(() => { initAuth() }, [initAuth])
+  const persistAuth = (data) => {
+    localStorage.setItem('peezuhub_token', data.token);
+    localStorage.setItem('peezuhub_user', JSON.stringify(data.user));
+    dispatch({ type: 'SET_AUTH', payload: data });
+  };
 
-  const login = useCallback(async (credentials) => {
-    const { data } = await authAPI.login(credentials)
-    localStorage.setItem('naijafixhub_token', data.token)
-    dispatch({ type: 'LOGIN_SUCCESS', payload: data })
-    return data
-  }, [])
+  const value = useMemo(
+    () => ({
+      ...state,
 
-  const register = useCallback(async (userData) => {
-    const { data } = await authAPI.register(userData)
-    localStorage.setItem('naijafixhub_token', data.token)
-    dispatch({ type: 'LOGIN_SUCCESS', payload: data })
-    return data
-  }, [])
+      async login(payload) {
+        const { data } = await client.post('/auth/login', payload);
+        persistAuth(data);
+      },
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('naijafixhub_token')
-    localStorage.removeItem('naijafixhub_user')
-    dispatch({ type: 'LOGOUT' })
-  }, [])
+      async register(payload) {
+        const { data } = await client.post('/auth/register', payload);
+        persistAuth(data);
+      },
 
-  const updateUser = useCallback((updates) => {
-    dispatch({ type: 'UPDATE_USER', payload: updates })
-  }, [])
+      // Used by RegisterPage
+      async googleAuth(payload) {
+        const requestBody =
+          typeof payload === 'string'
+            ? { credential: payload, mode: 'register' }
+            : { accessToken: payload?.accessToken, mode: payload?.mode || 'register' };
+        const { data } = await client.post('/auth/google', requestBody);
+        persistAuth(data);
+      },
 
-  const value = {
-    ...state,
-    isAdmin: isAdmin(state.user),
-    login,
-    register,
-    logout,
-    updateUser,
-  }
+      // Used by LoginPage
+      async googleLogin(payload) {
+        const requestBody =
+          typeof payload === 'string'
+            ? { credential: payload, mode: 'login' }
+            : { accessToken: payload?.accessToken, mode: payload?.mode || 'login' };
+        const { data } = await client.post('/auth/google', requestBody);
+        persistAuth(data);
+      },
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+      logout() {
+        localStorage.removeItem('peezuhub_token');
+        localStorage.removeItem('peezuhub_user');
+        dispatch({ type: 'LOGOUT' });
+      },
+    }),
+    [state],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider')
-  return ctx
+  return useContext(AuthContext);
 }
