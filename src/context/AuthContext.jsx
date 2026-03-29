@@ -49,6 +49,9 @@ function reducer(state, action) {
   }
 }
 
+const canOfferServices = (role) => ['artisan', 'both', 'admin'].includes(role)
+const canRequestServices = (role) => ['user', 'both', 'admin'].includes(role)
+
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
 
@@ -86,6 +89,8 @@ export function AuthProvider({ children }) {
       ...state,
       isAuthenticated: Boolean(state.token && state.user),
       isAdmin: state.user?.role === 'admin',
+      canOfferServices: canOfferServices(state.user?.role),
+      canRequestServices: canRequestServices(state.user?.role),
 
       async login(payload) {
         const { data } = await authAPI.login(payload)
