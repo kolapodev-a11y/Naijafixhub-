@@ -20,7 +20,7 @@ const schema = z.object({
 })
 
 export default function SmartMatchForm() {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, canRequestServices } = useAuth()
   const navigate = useNavigate()
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -38,6 +38,12 @@ export default function SmartMatchForm() {
     if (!isAuthenticated) {
       toast.error('Please sign in before posting a request.')
       navigate('/login?redirect=/')
+      return
+    }
+
+    if (!canRequestServices) {
+      toast.error('Your account type cannot post service requests. Choose the both option or a service-seeker account.')
+      navigate('/profile')
       return
     }
 
@@ -85,6 +91,32 @@ export default function SmartMatchForm() {
               Create Account
             </Link>
           </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!canRequestServices) {
+    return (
+      <div className="overflow-hidden rounded-2xl bg-white shadow-card">
+        <div className="bg-gradient-to-r from-primary-600 to-accent-500 p-5">
+          <h2 className="flex items-center gap-2 text-xl font-bold text-white">⚡ Smart Match – Post Your Need</h2>
+          <p className="mt-1 text-sm text-white/80">This action is available for service seekers and both-role accounts.</p>
+        </div>
+
+        <div className="space-y-5 p-6 text-center">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-50 text-amber-700">
+            <FiAlertCircle size={24} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-800">Account type restriction</h3>
+            <p className="mt-2 text-sm text-gray-500">
+              Your current account is set up only for offering services. Use a <strong>both</strong> account if you also want to post customer requests.
+            </p>
+          </div>
+          <Link to="/search" className="btn-outline text-center">
+            Browse Artisans Instead
+          </Link>
         </div>
       </div>
     )
