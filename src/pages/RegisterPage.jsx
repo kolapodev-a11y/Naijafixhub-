@@ -7,13 +7,19 @@ import { useAuth } from '../context/AuthContext'
 import AuthShell from '../components/AuthShell'
 import GoogleAuthButton from '../components/GoogleAuthButton'
 
+const ACCOUNT_INTENTS = [
+  { value: 'user', title: 'I am looking for a service', subtitle: 'Hire artisans and manage service requests' },
+  { value: 'artisan', title: 'I want to offer a service', subtitle: 'Create listings and promote my work' },
+  { value: 'both', title: 'I want both', subtitle: 'Find artisans and offer my own services too' },
+]
+
 const schema = z
   .object({
     name: z.string().min(2, 'Full name must be at least 2 characters'),
     email: z.string().email('Enter a valid email address'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
     confirmPassword: z.string().min(6, 'Confirm your password'),
-    intent: z.enum(['user', 'artisan']),
+    intent: z.enum(['user', 'artisan', 'both']),
   })
   .refine((values) => values.password === values.confirmPassword, {
     path: ['confirmPassword'],
@@ -21,14 +27,9 @@ const schema = z
   })
 
 function IntentSelector({ value, onChange }) {
-  const options = [
-    { value: 'user', title: 'I am looking for a service', subtitle: 'Hire artisans and manage requests' },
-    { value: 'artisan', title: 'I want to offer a service', subtitle: 'Create listings and upgrade to premium' },
-  ]
-
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {options.map((option) => (
+    <div className="grid gap-3 sm:grid-cols-3">
+      {ACCOUNT_INTENTS.map((option) => (
         <button
           key={option.value}
           type="button"
@@ -47,6 +48,18 @@ function IntentSelector({ value, onChange }) {
   )
 }
 
+const getRole = (intent) => {
+  if (intent === 'artisan') return 'artisan'
+  if (intent === 'both') return 'both'
+  return 'user'
+}
+
+const getDestination = (redirect, role) => {
+  if (redirect) return redirect
+  if (role === 'artisan') return '/post-service'
+  return '/'
+}
+
 export default function RegisterPage() {
   const { register: signup, googleAuth } = useAuth()
   const navigate = useNavigate()
@@ -58,19 +71,17 @@ export default function RegisterPage() {
     defaultValues: { name: '', email: '', password: '', confirmPassword: '', intent: 'user' },
   })
 
-  const getRole = (intent) => (intent === 'artisan' ? 'artisan' : 'user')
-  const getDestination = (intent) => redirect || (intent === 'artisan' ? '/post-service' : '/')
-
   async function onSubmit(values) {
     try {
+      const role = getRole(values.intent)
       await signup({
         name: values.name,
         email: values.email,
         password: values.password,
-        role: getRole(values.intent),
+        role,
       })
       toast.success('Account created successfully!')
-      navigate(getDestination(values.intent), { replace: true })
+      navigate(getDestination(redirect, role), { replace: true })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed. Please try again.')
     }
@@ -79,9 +90,10 @@ export default function RegisterPage() {
   async function handleGoogleSuccess({ accessToken }) {
     try {
       const intent = form.getValues('intent')
-      await googleAuth({ accessToken, mode: 'register', role: getRole(intent) })
+      const role = getRole(intent)
+      await googleAuth({ accessToken, mode: 'register', role })
       toast.success('Signed up with Google successfully!')
-      navigate(getDestination(intent), { replace: true })
+      navigate(getDestination(redirect, role), { replace: true })
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Google sign-up failed. Please try again.')
     }
@@ -90,7 +102,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Choose your account purpose first, then sign up with email or Google. You can still browse freely, but posting requires login."
+      subtitle="Pick the right account type from the start: service seeker, artisan, or both. You can still browse freely, but posting actions now follow your selected role."
       footer={
         <p className="text-sm text-slate-500">
           Already have an account?{' '}

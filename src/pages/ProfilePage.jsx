@@ -3,16 +3,25 @@ import { useAuth } from '../context/AuthContext'
 import { authAPI } from '../utils/api'
 import { useForm } from 'react-hook-form'
 import toast from 'react-hot-toast'
-import { FiUser, FiMail, FiSave, FiLock, FiAlertCircle } from 'react-icons/fi'
+import { FiUser, FiMail, FiSave, FiLock } from 'react-icons/fi'
 import { getInitials } from '../utils/helpers'
+
+const roleBadgeMap = {
+  admin: { label: '🛡️ Admin', className: 'bg-primary-100 text-primary-700' },
+  artisan: { label: '🔧 Service Provider', className: 'bg-amber-100 text-amber-700' },
+  both: { label: '🔄 Seeker + Provider', className: 'bg-emerald-100 text-emerald-700' },
+  user: { label: '👤 Service Seeker', className: 'bg-gray-100 text-gray-600' },
+}
 
 export default function ProfilePage() {
   const { user, updateUser } = useAuth()
   const [loading, setLoading] = useState(false)
 
   const { register, handleSubmit, formState: { errors } } = useForm({
-    defaultValues: { name: user?.name || '', email: user?.email || '' }
+    defaultValues: { name: user?.name || '', email: user?.email || '' },
   })
+
+  const badge = roleBadgeMap[user?.role] || roleBadgeMap.user
 
   const onSubmit = async (data) => {
     setLoading(true)
@@ -39,8 +48,8 @@ export default function ProfilePage() {
           <div>
             <p className="font-bold text-gray-800 text-lg">{user?.name}</p>
             <p className="text-gray-500 text-sm">{user?.email}</p>
-            <span className={`mt-1 inline-block text-xs font-medium px-2 py-0.5 rounded-full ${user?.role === 'admin' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`}>
-              {user?.role === 'admin' ? '🛡️ Admin' : user?.role === 'artisan' ? '🔧 Artisan' : '👤 User'}
+            <span className={`mt-1 inline-block text-xs font-medium px-2 py-0.5 rounded-full ${badge.className}`}>
+              {badge.label}
             </span>
           </div>
         </div>

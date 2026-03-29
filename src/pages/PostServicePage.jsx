@@ -5,12 +5,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { artisanAPI } from '../utils/api'
 import { useAuth } from '../context/AuthContext'
-import { CATEGORIES, NIGERIAN_STATES, PREMIUM_PRICE } from '../utils/constants'
+import { CATEGORIES, NIGERIAN_STATES } from '../utils/constants'
 import { containsScamKeywords } from '../utils/helpers'
 import toast from 'react-hot-toast'
 import { FiUpload, FiCheck, FiAlertCircle, FiArrowRight, FiArrowLeft } from 'react-icons/fi'
-import { FaWhatsapp } from 'react-icons/fa'
-import { FaCrown } from 'react-icons/fa'
+import { FaWhatsapp, FaCrown } from 'react-icons/fa'
 
 const step1Schema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters').max(100),
@@ -35,7 +34,7 @@ const step3Schema = z.object({
 const STEPS = ['Details', 'Contact', 'Safety & Submit']
 
 export default function PostServicePage() {
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, canOfferServices } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
   const [photos, setPhotos] = useState([])
@@ -55,23 +54,26 @@ export default function PostServicePage() {
       return
     }
     setPhotoError('')
-    setPhotos(prev => [...prev, ...files])
+    setPhotos((prev) => [...prev, ...files])
   }
 
-  const removePhoto = (idx) => setPhotos(prev => prev.filter((_, i) => i !== idx))
+  const removePhoto = (idx) => setPhotos((prev) => prev.filter((_, i) => i !== idx))
 
   const handleStep1 = step1Form.handleSubmit((data) => {
     if (containsScamKeywords(data.description)) {
       step1Form.setError('description', { message: 'Description contains suspicious keywords. Please revise.' })
       return
     }
-    if (photos.length === 0) { setPhotoError('At least one photo is required'); return }
-    setFormData(prev => ({ ...prev, ...data }))
+    if (photos.length === 0) {
+      setPhotoError('At least one photo is required')
+      return
+    }
+    setFormData((prev) => ({ ...prev, ...data }))
     setStep(2)
   })
 
   const handleStep2 = step2Form.handleSubmit((data) => {
-    setFormData(prev => ({ ...prev, ...data }))
+    setFormData((prev) => ({ ...prev, ...data }))
     setStep(3)
   })
 
@@ -82,6 +84,12 @@ export default function PostServicePage() {
       return
     }
 
+    if (!canOfferServices) {
+      toast.error('Your account type cannot offer services. Choose an artisan or both account to continue.')
+      navigate('/profile')
+      return
+    }
+
     setLoading(true)
     try {
       const fd = new FormData()
@@ -89,7 +97,7 @@ export default function PostServicePage() {
       Object.entries(payload).forEach(([k, v]) => {
         if (v !== undefined && v !== null) fd.append(k, v)
       })
-      photos.forEach(photo => fd.append('photos', photo))
+      photos.forEach((photo) => fd.append('photos', photo))
 
       await artisanAPI.create(fd)
       setSubmitted(true)
@@ -117,6 +125,25 @@ export default function PostServicePage() {
     )
   }
 
+  if (!canOfferServices) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <div className="card p-8">
+          <p className="text-5xl mb-4">🚫</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">Your account cannot offer services yet</h2>
+          <p className="text-gray-500 mb-6">
+            This page is available only to <strong>service providers</strong> and <strong>both-role</strong> accounts.
+            If you need both capabilities, register with the both option.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Link to="/search" className="btn-outline w-full text-center">Browse Artisans</Link>
+            <Link to="/profile" className="btn-primary w-full text-center">Go to My Profile</Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (submitted) {
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
@@ -134,8 +161,15 @@ export default function PostServicePage() {
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link to="/" className="flex-1 btn-outline text-sm text-center">Go to Home</Link>
-            <button onClick={() => { setSubmitted(false); setStep(1); setPhotos([]); setFormData({}) }}
-              className="flex-1 btn-primary text-sm">
+            <button
+              onClick={() => {
+                setSubmitted(false)
+                setStep(1)
+                setPhotos([])
+                setFormData({})
+              }}
+              className="flex-1 btn-primary text-sm"
+            >
               Post Another Service
             </button>
           </div>
@@ -146,13 +180,11 @@ export default function PostServicePage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-2">Offer Your Service</h1>
         <p className="text-gray-500">Fill in your service details to connect with clients across Nigeria</p>
       </div>
 
-      {/* Stepper */}
       <div className="flex items-center justify-between mb-8">
         {STEPS.map((label, idx) => {
           const num = idx + 1
@@ -174,7 +206,6 @@ export default function PostServicePage() {
         })}
       </div>
 
-      {/* STEP 1 */}
       {step === 1 && (
         <form onSubmit={handleStep1} className="card p-6 space-y-5">
           <h2 className="font-bold text-lg text-gray-800">Step 1: Service Details</h2>
@@ -190,7 +221,7 @@ export default function PostServicePage() {
             <label className="label">Category <span className="text-red-500">*</span></label>
             <select {...step1Form.register('category')} className="input-field">
               <option value="">— Select Category —</option>
-              {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
+              {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.icon} {c.name}</option>)}
             </select>
             {step1Form.formState.errors.category && <p className="text-red-500 text-xs mt-1">{step1Form.formState.errors.category.message}</p>}
           </div>
@@ -207,7 +238,7 @@ export default function PostServicePage() {
               <label className="label">State <span className="text-red-500">*</span></label>
               <select {...step1Form.register('state')} className="input-field">
                 <option value="">— Select State —</option>
-                {NIGERIAN_STATES.filter(s => s !== 'All States').map(s => <option key={s} value={s}>{s}</option>)}
+                {NIGERIAN_STATES.filter((s) => s !== 'All States').map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
               {step1Form.formState.errors.state && <p className="text-red-500 text-xs mt-1">{step1Form.formState.errors.state.message}</p>}
             </div>
@@ -239,7 +270,6 @@ export default function PostServicePage() {
             </div>
           </div>
 
-          {/* Photo Upload */}
           <div>
             <label className="label">Photos (min 1, max 5) <span className="text-red-500">*</span></label>
             <div className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer hover:bg-primary-50 hover:border-primary-300 transition-colors ${photoError ? 'border-red-300' : 'border-gray-300'}`}>
@@ -273,7 +303,6 @@ export default function PostServicePage() {
         </form>
       )}
 
-      {/* STEP 2 */}
       {step === 2 && (
         <form onSubmit={handleStep2} className="card p-6 space-y-5">
           <h2 className="font-bold text-lg text-gray-800">Step 2: Contact Details</h2>
@@ -310,12 +339,10 @@ export default function PostServicePage() {
         </form>
       )}
 
-      {/* STEP 3 */}
       {step === 3 && (
         <form onSubmit={handleStep3} className="card p-6 space-y-5">
           <h2 className="font-bold text-lg text-gray-800">Step 3: Safety & Submit</h2>
 
-          {/* Premium option */}
           <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl p-5">
             <div className="flex items-start gap-3">
               <input type="checkbox" {...step3Form.register('isPremium')} id="isPremium"
@@ -333,7 +360,6 @@ export default function PostServicePage() {
             </div>
           </div>
 
-          {/* Disclaimer */}
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
             <h3 className="font-bold text-red-800 text-sm mb-2 flex items-center gap-1.5">
               <FiAlertCircle size={15} /> Important Safety Notice
@@ -345,7 +371,6 @@ export default function PostServicePage() {
             </p>
           </div>
 
-          {/* Agreement */}
           <div className="flex items-start gap-3">
             <input type="checkbox" {...step3Form.register('agreeTerms')} id="agreeTerms"
               className="mt-1 w-5 h-5 accent-primary-600 rounded" />
