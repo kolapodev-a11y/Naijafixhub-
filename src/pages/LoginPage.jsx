@@ -7,22 +7,21 @@ import { useAuth } from '../context/AuthContext'
 import AuthShell from '../components/AuthShell'
 import GoogleAuthButton from '../components/GoogleAuthButton'
 
-const ACCOUNT_INTENTS = [
-  { value: 'user', title: 'I need a service', subtitle: 'Find artisans and post service requests' },
-  { value: 'artisan', title: 'I offer a service', subtitle: 'Create and manage artisan listings' },
-  { value: 'both', title: 'I want both', subtitle: 'Hire artisans and offer my own services' },
-]
-
 const schema = z.object({
   email: z.string().email('Enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  intent: z.enum(['user', 'artisan', 'both']),
+  intent: z.enum(['customer', 'provider']),
 })
 
 function IntentSelector({ value, onChange }) {
+  const options = [
+    { value: 'customer', title: 'I need a service', subtitle: 'Browse artisans and post requests' },
+    { value: 'provider', title: 'I offer a service', subtitle: 'Manage listings and premium upgrades' },
+  ]
+
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      {ACCOUNT_INTENTS.map((option) => (
+    <div className="grid grid-cols-2 gap-3">
+      {options.map((option) => (
         <button
           key={option.value}
           type="button"
@@ -41,12 +40,6 @@ function IntentSelector({ value, onChange }) {
   )
 }
 
-const getDestination = (redirect, user) => {
-  if (redirect) return redirect
-  if (user?.role === 'artisan') return '/post-service'
-  return '/'
-}
-
 export default function LoginPage() {
   const { login, googleLogin } = useAuth()
   const navigate = useNavigate()
@@ -55,14 +48,22 @@ export default function LoginPage() {
 
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '', intent: 'user' },
+    defaultValues: { email: '', password: '', intent: 'customer' },
   })
+
+  const getDestination = (intent, user) => {
+    if (redirect) return redirect
+    if (intent === 'provider') {
+      return ['provider', 'both'].includes(user?.accountType) || user?.role === 'admin' ? '/post-service' : '/profile'
+    }
+    return '/'
+  }
 
   async function onSubmit(values) {
     try {
       const user = await login({ email: values.email, password: values.password })
       toast.success(`Welcome back${user?.name ? `, ${user.name}` : ''}!`)
-      navigate(getDestination(redirect, user), { replace: true })
+      navigate(getDestination(values.intent, user), { replace: true })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed. Please check your credentials.')
     }
@@ -71,9 +72,9 @@ export default function LoginPage() {
   async function handleGoogleLogin({ accessToken }) {
     try {
       const intent = form.getValues('intent')
-      const user = await googleLogin({ accessToken, mode: 'login', role: intent })
+      const user = await googleLogin({ accessToken, mode: 'login' })
       toast.success('Google login successful!')
-      navigate(getDestination(redirect, user), { replace: true })
+      navigate(getDestination(intent, user), { replace: true })
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Google login failed. Please try again.')
     }
@@ -82,7 +83,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="Sign in to NaijaFixHub"
-      subtitle="Choose your account type first. We now support service seekers, artisans, and a combined both-roles account."
+      subtitle="Choose whether you are here to hire someone or offer your own service, then continue with email or Google."
       footer={
         <p className="text-sm text-slate-500">
           No account yet?{' '}

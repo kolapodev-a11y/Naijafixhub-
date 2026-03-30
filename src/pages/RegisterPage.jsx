@@ -7,10 +7,22 @@ import { useAuth } from '../context/AuthContext'
 import AuthShell from '../components/AuthShell'
 import GoogleAuthButton from '../components/GoogleAuthButton'
 
-const ACCOUNT_INTENTS = [
-  { value: 'user', title: 'I am looking for a service', subtitle: 'Hire artisans and manage service requests' },
-  { value: 'artisan', title: 'I want to offer a service', subtitle: 'Create listings and promote my work' },
-  { value: 'both', title: 'I want both', subtitle: 'Find artisans and offer my own services too' },
+const accountOptions = [
+  {
+    value: 'customer',
+    title: 'Customer',
+    subtitle: 'Find trusted artisans and post service requests.',
+  },
+  {
+    value: 'provider',
+    title: 'Provider',
+    subtitle: 'Offer services, manage listings, and upgrade to premium.',
+  },
+  {
+    value: 'both',
+    title: 'Both',
+    subtitle: 'Hire artisans and also promote your own services.',
+  },
 ]
 
 const schema = z
@@ -19,45 +31,33 @@ const schema = z
     email: z.string().email('Enter a valid email address'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
     confirmPassword: z.string().min(6, 'Confirm your password'),
-    intent: z.enum(['user', 'artisan', 'both']),
+    accountType: z.enum(['customer', 'provider', 'both']),
   })
   .refine((values) => values.password === values.confirmPassword, {
     path: ['confirmPassword'],
     message: 'Passwords do not match',
   })
 
-function IntentSelector({ value, onChange }) {
+function AccountTypeSelector({ value, onChange }) {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
-      {ACCOUNT_INTENTS.map((option) => (
+      {accountOptions.map((option) => (
         <button
           key={option.value}
           type="button"
           onClick={() => onChange(option.value)}
-          className={`rounded-2xl border px-3 py-3 text-left transition ${
+          className={`rounded-2xl border p-4 text-left transition ${
             value === option.value
-              ? 'border-primary-500 bg-primary-50 text-primary-700'
-              : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200'
+              ? 'border-primary-500 bg-primary-50 shadow-sm ring-2 ring-primary-100'
+              : 'border-gray-200 bg-white hover:border-primary-200'
           }`}
         >
-          <p className="text-sm font-bold">{option.title}</p>
-          <p className="mt-1 text-xs text-current/80">{option.subtitle}</p>
+          <p className="text-sm font-bold text-gray-800">{option.title}</p>
+          <p className="mt-1 text-xs leading-5 text-gray-500">{option.subtitle}</p>
         </button>
       ))}
     </div>
   )
-}
-
-const getRole = (intent) => {
-  if (intent === 'artisan') return 'artisan'
-  if (intent === 'both') return 'both'
-  return 'user'
-}
-
-const getDestination = (redirect, role) => {
-  if (redirect) return redirect
-  if (role === 'artisan') return '/post-service'
-  return '/'
 }
 
 export default function RegisterPage() {
@@ -68,20 +68,24 @@ export default function RegisterPage() {
 
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { name: '', email: '', password: '', confirmPassword: '', intent: 'user' },
+    defaultValues: { name: '', email: '', password: '', confirmPassword: '', accountType: 'customer' },
   })
+
+  const getDestination = (accountType) => {
+    if (redirect) return redirect
+    return ['provider', 'both'].includes(accountType) ? '/post-service' : '/'
+  }
 
   async function onSubmit(values) {
     try {
-      const role = getRole(values.intent)
       await signup({
         name: values.name,
         email: values.email,
         password: values.password,
-        role,
+        accountType: values.accountType,
       })
       toast.success('Account created successfully!')
-      navigate(getDestination(redirect, role), { replace: true })
+      navigate(getDestination(values.accountType), { replace: true })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed. Please try again.')
     }
@@ -89,11 +93,10 @@ export default function RegisterPage() {
 
   async function handleGoogleSuccess({ accessToken }) {
     try {
-      const intent = form.getValues('intent')
-      const role = getRole(intent)
-      await googleAuth({ accessToken, mode: 'register', role })
+      const accountType = form.getValues('accountType')
+      await googleAuth({ accessToken, mode: 'register', accountType })
       toast.success('Signed up with Google successfully!')
-      navigate(getDestination(redirect, role), { replace: true })
+      navigate(getDestination(accountType), { replace: true })
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Google sign-up failed. Please try again.')
     }
@@ -102,7 +105,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Pick the right account type from the start: service seeker, artisan, or both. You can still browse freely, but posting actions now follow your selected role."
+      subtitle="Choose the kind of account you want, then continue with email or Google. You can change this later from your profile settings."
       footer={
         <p className="text-sm text-slate-500">
           Already have an account?{' '}
@@ -112,7 +115,13 @@ export default function RegisterPage() {
         </p>
       }
     >
-      <IntentSelector value={form.watch('intent')} onChange={(value) => form.setValue('intent', value, { shouldValidate: true })} />
+      <div className="space-y-2">
+        <div>
+          <p className="text-sm font-semibold text-gray-800">Select account type</p>
+          <p className="text-xs text-gray-500">Required during signup.</p>
+        </div>
+        <AccountTypeSelector value={form.watch('accountType')} onChange={(value) => form.setValue('accountType', value, { shouldValidate: true })} />
+      </div>
 
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         <div>
@@ -146,7 +155,11 @@ export default function RegisterPage() {
         <div className="h-px flex-1 bg-slate-200" />
       </div>
 
-      <GoogleAuthButton mode="register" onAuthenticated={handleGoogleSuccess} onError={(error) => toast.error(error?.response?.data?.message || error?.message || 'Google sign-up failed. Please try again.')} />
+      <GoogleAuthButton
+        mode="register"
+        onAuthenticated={handleGoogleSuccess}
+        onError={(error) => toast.error(error?.response?.data?.message || error?.message || 'Google sign-up failed. Please try again.')}
+      />
     </AuthShell>
   )
 }
