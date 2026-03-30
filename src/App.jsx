@@ -105,7 +105,7 @@ function AppRoutes() {
         <Route
           path="/admin"
           element={
-            <Layout>
+            <Layout noFooter>
               <RequireAdmin>
                 <AdminDashboard />
               </RequireAdmin>
@@ -115,7 +115,7 @@ function AppRoutes() {
         <Route
           path="/admin/*"
           element={
-            <Layout>
+            <Layout noFooter>
               <RequireAdmin>
                 <AdminDashboard />
               </RequireAdmin>
