@@ -39,6 +39,7 @@ export const authAPI = {
   getMe: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/profile', data),
   changePassword: (data) => api.put('/auth/password', data),
+  deleteProfile: () => api.delete('/auth/profile'),
 }
 
 export const artisanAPI = {
@@ -78,13 +79,19 @@ export const adminAPI = {
   getReports: () => api.get('/admin/reports'),
   resolveReport: (id, action) => api.put(`/admin/reports/${id}/resolve`, { action }),
   getAllUsers: (params) => api.get('/admin/users', { params }),
-  suspendUser: (id) => api.put(`/admin/users/${id}/suspend`),
+  suspendUser: (id, reason) => api.put(`/admin/users/${id}/suspend`, { reason }),
   getAllListings: (params) => api.get('/admin/listings', { params }),
 }
 
 export const paymentAPI = {
-  initiatePremium: (artisanId) => api.post('/payments/initiate', { artisanId }),
+  initiatePremium: () => api.post('/payments/initiate'),
   verifyPayment: (reference) => api.get(`/payments/verify/${reference}`),
+}
+
+export const notificationsAPI = {
+  list: (params) => api.get('/notifications', { params }),
+  markRead: (id) => api.patch(`/notifications/${id}/read`),
+  markAllRead: () => api.patch('/notifications/read-all'),
 }
 
 export default api
