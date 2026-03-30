@@ -10,34 +10,12 @@ import GoogleAuthButton from '../components/GoogleAuthButton'
 const schema = z.object({
   email: z.string().email('Enter a valid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  intent: z.enum(['customer', 'provider']),
 })
 
-function IntentSelector({ value, onChange }) {
-  const options = [
-    { value: 'customer', title: 'I need a service', subtitle: 'Browse artisans and post requests' },
-    { value: 'provider', title: 'I offer a service', subtitle: 'Manage listings and premium upgrades' },
-  ]
-
-  return (
-    <div className="grid grid-cols-2 gap-3">
-      {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          onClick={() => onChange(option.value)}
-          className={`rounded-2xl border px-3 py-3 text-left transition ${
-            value === option.value
-              ? 'border-primary-500 bg-primary-50 text-primary-700'
-              : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200'
-          }`}
-        >
-          <p className="text-sm font-bold">{option.title}</p>
-          <p className="mt-1 text-xs text-current/80">{option.subtitle}</p>
-        </button>
-      ))}
-    </div>
-  )
+const getDestination = (redirect, user) => {
+  if (redirect) return redirect
+  if (user?.role === 'artisan') return '/post-service'
+  return '/'
 }
 
 export default function LoginPage() {
@@ -48,22 +26,14 @@ export default function LoginPage() {
 
   const form = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { email: '', password: '', intent: 'customer' },
+    defaultValues: { email: '', password: '' },
   })
-
-  const getDestination = (intent, user) => {
-    if (redirect) return redirect
-    if (intent === 'provider') {
-      return ['provider', 'both'].includes(user?.accountType) || user?.role === 'admin' ? '/post-service' : '/profile'
-    }
-    return '/'
-  }
 
   async function onSubmit(values) {
     try {
       const user = await login({ email: values.email, password: values.password })
       toast.success(`Welcome back${user?.name ? `, ${user.name}` : ''}!`)
-      navigate(getDestination(values.intent, user), { replace: true })
+      navigate(getDestination(redirect, user), { replace: true })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed. Please check your credentials.')
     }
@@ -71,10 +41,9 @@ export default function LoginPage() {
 
   async function handleGoogleLogin({ accessToken }) {
     try {
-      const intent = form.getValues('intent')
       const user = await googleLogin({ accessToken, mode: 'login' })
       toast.success('Google login successful!')
-      navigate(getDestination(intent, user), { replace: true })
+      navigate(getDestination(redirect, user), { replace: true })
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Google login failed. Please try again.')
     }
@@ -83,7 +52,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="Sign in to NaijaFixHub"
-      subtitle="Choose whether you are here to hire someone or offer your own service, then continue with email or Google."
+      subtitle="Welcome back. Sign in to manage your account, listings, and service requests. Account-type choices now appear only during sign-up."
       footer={
         <p className="text-sm text-slate-500">
           No account yet?{' '}
@@ -93,8 +62,6 @@ export default function LoginPage() {
         </p>
       }
     >
-      <IntentSelector value={form.watch('intent')} onChange={(value) => form.setValue('intent', value, { shouldValidate: true })} />
-
       <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)}>
         <div>
           <input className="input-field" placeholder="Email address" {...form.register('email')} />
@@ -117,7 +84,11 @@ export default function LoginPage() {
         <div className="h-px flex-1 bg-slate-200" />
       </div>
 
-      <GoogleAuthButton mode="login" onAuthenticated={handleGoogleLogin} onError={(error) => toast.error(error?.response?.data?.message || error?.message || 'Google login failed. Please try again.')} />
+      <GoogleAuthButton
+        mode="login"
+        onAuthenticated={handleGoogleLogin}
+        onError={(error) => toast.error(error?.response?.data?.message || error?.message || 'Google login failed. Please try again.')}
+      />
     </AuthShell>
   )
 }

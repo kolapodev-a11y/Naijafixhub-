@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -28,13 +28,14 @@ const step2Schema = z.object({
 })
 
 const step3Schema = z.object({
+  isPremium: z.boolean().optional(),
   agreeTerms: z.literal(true, { errorMap: () => ({ message: 'You must agree to terms' }) }),
 })
 
 const STEPS = ['Details', 'Contact', 'Safety & Submit']
 
 export default function PostServicePage() {
-  const { isAuthenticated, canOfferServices, hasPremiumProvider, user } = useAuth()
+  const { isAuthenticated, canOfferServices } = useAuth()
   const navigate = useNavigate()
   const [step, setStep] = useState(1)
   const [photos, setPhotos] = useState([])
@@ -43,9 +44,41 @@ export default function PostServicePage() {
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  const step1Form = useForm({ resolver: zodResolver(step1Schema) })
-  const step2Form = useForm({ resolver: zodResolver(step2Schema) })
-  const step3Form = useForm({ resolver: zodResolver(step3Schema) })
+  const pageTopRef = useRef(null)
+
+  const step1Form = useForm({
+    resolver: zodResolver(step1Schema),
+    defaultValues: {
+      title: '',
+      category: '',
+      description: '',
+      location: '',
+      state: '',
+      startingPrice: '',
+      priceLabel: '',
+      serviceArea: '',
+    },
+  })
+
+  const step2Form = useForm({
+    resolver: zodResolver(step2Schema),
+    defaultValues: { whatsapp: '', phone: '' },
+  })
+
+  const step3Form = useForm({
+    resolver: zodResolver(step3Schema),
+    defaultValues: { isPremium: false, agreeTerms: false },
+  })
+
+  useEffect(() => {
+    pageTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+
+    window.requestAnimationFrame(() => {
+      if (step === 1) step1Form.setFocus('title')
+      if (step === 2) step2Form.setFocus('whatsapp')
+      if (step === 3) step3Form.setFocus('isPremium')
+    })
+  }, [step, step1Form, step2Form, step3Form])
 
   const handlePhotoChange = (e) => {
     const files = Array.from(e.target.files)
@@ -68,6 +101,7 @@ export default function PostServicePage() {
       setPhotoError('At least one photo is required')
       return
     }
+
     setFormData((prev) => ({ ...prev, ...data }))
     setStep(2)
   })
@@ -85,7 +119,7 @@ export default function PostServicePage() {
     }
 
     if (!canOfferServices) {
-      toast.error('Your current account type cannot post services. Switch to Provider or Both in your profile.')
+      toast.error('Your account type cannot offer services. Choose an artisan or both account to continue.')
       navigate('/profile')
       return
     }
@@ -127,16 +161,17 @@ export default function PostServicePage() {
 
   if (!canOfferServices) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16">
-        <div className="card p-8 space-y-4">
-          <div className="flex items-center gap-3 text-primary-700">
-            <FiShield size={22} />
-            <h2 className="text-2xl font-bold text-gray-800">Provider access required</h2>
-          </div>
-          <p className="text-gray-600">Your account is currently set to <strong>{user?.accountType}</strong>. To create service listings, switch your account type to <strong>Provider</strong> or <strong>Both</strong> from your profile settings.</p>
-          <div className="flex flex-wrap gap-3">
-            <Link to="/profile" className="btn-primary">Open Profile Settings</Link>
-            <Link to="/" className="btn-outline">Back to Home</Link>
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        <div className="card p-8">
+          <p className="text-5xl mb-4">🚫</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">Your account cannot offer services yet</h2>
+          <p className="text-gray-500 mb-6">
+            This page is available only to <strong>service providers</strong> and <strong>both-role</strong> accounts.
+            If you need both capabilities, register with the both option.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Link to="/search" className="btn-outline w-full text-center">Browse Artisans</Link>
+            <Link to="/profile" className="btn-primary w-full text-center">Go to My Profile</Link>
           </div>
         </div>
       </div>
@@ -152,11 +187,26 @@ export default function PostServicePage() {
           </div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">Service Listed! 🎉</h2>
           <p className="text-gray-500 mb-5">
-            Your listing is under review by our admin team. You will receive an in-app notification once it is approved or if any changes are needed.
+            Your listing is under review by our admin team. You will be notified once approved.
+            <br /><br />
+            <span className="text-amber-600 text-sm font-medium">
+              ⚠️ Please note: NaijaFixHub does not handle payments. All transactions are directly between you and clients.
+            </span>
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link to="/" className="flex-1 btn-outline text-sm text-center">Go to Home</Link>
-            <button onClick={() => { setSubmitted(false); setStep(1); setPhotos([]); setFormData({}) }} className="flex-1 btn-primary text-sm">
+            <button
+              onClick={() => {
+                setSubmitted(false)
+                setStep(1)
+                setPhotos([])
+                setFormData({})
+                step1Form.reset()
+                step2Form.reset()
+                step3Form.reset({ isPremium: false, agreeTerms: false })
+              }}
+              className="flex-1 btn-primary text-sm"
+            >
               Post Another Service
             </button>
           </div>
@@ -166,19 +216,10 @@ export default function PostServicePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
+    <div ref={pageTopRef} className="max-w-2xl mx-auto px-4 sm:px-6 py-10">
       <div className="mb-8">
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-2">Offer Your Service</h1>
-            <p className="text-gray-500">Fill in your service details to connect with clients across Nigeria</p>
-          </div>
-          {hasPremiumProvider && (
-            <div className="inline-flex items-center gap-2 rounded-full bg-yellow-50 px-4 py-2 text-sm font-semibold text-yellow-800 border border-yellow-200">
-              <FaCrown className="text-yellow-500" /> Premium active for all your listings
-            </div>
-          )}
-        </div>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-2">Offer Your Service</h1>
+        <p className="text-gray-500">Fill in your service details to connect with clients across Nigeria</p>
       </div>
 
       <div className="flex items-center justify-between mb-8">
@@ -194,7 +235,9 @@ export default function PostServicePage() {
                 </div>
                 <span className={`text-xs font-medium hidden sm:block ${active ? 'text-primary-700' : 'text-gray-400'}`}>{label}</span>
               </div>
-              {idx < STEPS.length - 1 && <div className={`flex-1 h-0.5 mx-2 transition-colors ${step > num ? 'bg-brand-success' : 'bg-gray-200'}`} />}
+              {idx < STEPS.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-2 transition-colors ${step > num ? 'bg-brand-success' : 'bg-gray-200'}`} />
+              )}
             </React.Fragment>
           )
         })}
@@ -206,7 +249,11 @@ export default function PostServicePage() {
 
           <div>
             <label className="label">Service Title <span className="text-red-500">*</span></label>
-            <input {...step1Form.register('title')} className="input-field" placeholder='e.g. "Professional Plumbing Services in Lagos"' />
+            <input
+              {...step1Form.register('title')}
+              className="input-field"
+              placeholder='e.g. "Professional Plumbing Services in Lagos"'
+            />
             {step1Form.formState.errors.title && <p className="text-red-500 text-xs mt-1">{step1Form.formState.errors.title.message}</p>}
           </div>
 
@@ -221,7 +268,12 @@ export default function PostServicePage() {
 
           <div>
             <label className="label">Description <span className="text-red-500">*</span></label>
-            <textarea {...step1Form.register('description')} rows={4} className="input-field resize-none" placeholder="Describe your services, experience, tools, and what makes you different..." />
+            <textarea
+              {...step1Form.register('description')}
+              rows={4}
+              className="input-field resize-none"
+              placeholder="Describe your services, experience, tools, and what makes you different..."
+            />
             {step1Form.formState.errors.description && <p className="text-red-500 text-xs mt-1">{step1Form.formState.errors.description.message}</p>}
           </div>
 
@@ -274,28 +326,43 @@ export default function PostServicePage() {
                 {photos.map((file, i) => (
                   <div key={i} className="relative w-20 h-20 rounded-xl overflow-hidden border border-gray-200">
                     <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
-                    <button type="button" onClick={() => removePhoto(i)} className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center hover:bg-red-600">×</button>
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      className="absolute top-1 right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center hover:bg-red-600"
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2">Next: Contact Info <FiArrowRight size={16} /></button>
+          <button type="submit" className="btn-primary w-full flex items-center justify-center gap-2">
+            Next: Contact Info <FiArrowRight size={16} />
+          </button>
         </form>
       )}
 
       {step === 2 && (
         <form onSubmit={handleStep2} className="card p-6 space-y-5">
           <h2 className="font-bold text-lg text-gray-800">Step 2: Contact Details</h2>
+          <p className="text-sm text-gray-500 -mt-2">Add the number clients should use to reach you first. This step now keeps you at the top of the form instead of jumping to the submit button.</p>
 
           <div>
             <label className="label">WhatsApp Number <span className="text-red-500">*</span></label>
             <div className="relative">
               <FaWhatsapp size={16} className="absolute left-3 top-3.5 text-green-500" />
-              <input {...step2Form.register('whatsapp')} type="tel" className="input-field pl-9" placeholder="e.g. 08012345678 or +2348012345678" />
+              <input
+                {...step2Form.register('whatsapp')}
+                type="tel"
+                className="input-field pl-9"
+                placeholder="08012345678 or +2348012345678"
+              />
             </div>
             {step2Form.formState.errors.whatsapp && <p className="text-red-500 text-xs mt-1">{step2Form.formState.errors.whatsapp.message}</p>}
+            <p className="text-xs text-gray-400 mt-1">Clients will contact you directly on this number.</p>
           </div>
 
           <div>
@@ -303,11 +370,17 @@ export default function PostServicePage() {
             <input {...step2Form.register('phone')} type="tel" className="input-field" placeholder="Another phone number" />
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-700">💡 Your WhatsApp number is visible to clients so they can contact you directly. Make sure it is active.</div>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-sm text-blue-700">
+            💡 Your WhatsApp number will be visible to clients, so use an active line that you check regularly.
+          </div>
 
           <div className="flex gap-3">
-            <button type="button" onClick={() => setStep(1)} className="btn-ghost flex items-center gap-1 border border-gray-200"><FiArrowLeft size={16} /> Back</button>
-            <button type="submit" className="btn-primary flex-1 flex items-center justify-center gap-2">Next: Safety & Submit <FiArrowRight size={16} /></button>
+            <button type="button" onClick={() => setStep(1)} className="btn-ghost flex items-center gap-1 border border-gray-200">
+              <FiArrowLeft size={16} /> Back
+            </button>
+            <button type="submit" className="btn-primary flex-1 flex items-center justify-center gap-2">
+              Next: Safety & Submit <FiArrowRight size={16} />
+            </button>
           </div>
         </form>
       )}
@@ -316,37 +389,77 @@ export default function PostServicePage() {
         <form onSubmit={handleStep3} className="card p-6 space-y-5">
           <h2 className="font-bold text-lg text-gray-800">Step 3: Safety & Submit</h2>
 
-          <div className={`rounded-2xl border p-5 ${hasPremiumProvider ? 'border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50' : 'border-slate-200 bg-slate-50'}`}>
+          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl p-5">
             <div className="flex items-start gap-3">
-              <FaCrown size={18} className={hasPremiumProvider ? 'text-yellow-500 mt-1' : 'text-slate-400 mt-1'} />
+              <input
+                type="checkbox"
+                {...step3Form.register('isPremium')}
+                id="isPremium"
+                className="mt-1 w-5 h-5 accent-yellow-500 rounded"
+              />
               <div>
-                <p className="font-bold text-gray-800">Premium placement applies automatically</p>
+                <label htmlFor="isPremium" className="font-bold text-gray-800 cursor-pointer flex items-center gap-1.5">
+                  <FaCrown size={16} className="text-yellow-500" />
+                  Premium visibility request — ₦5,000/month
+                </label>
                 <p className="text-sm text-gray-600 mt-1">
-                  {hasPremiumProvider
-                    ? 'Your premium subscription is active. This listing will automatically receive premium placement once approved.'
-                    : 'If you upgrade from the Home page later, all your current and future listings will switch to premium automatically.'}
+                  Request stronger placement for your listing with faster verification review, better search visibility, and visible trust badges that help clients choose you with confidence.
                 </p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  {[
+                    'Verification priority',
+                    'Better listing placement',
+                    'Trust badges for credibility',
+                  ].map((item) => (
+                    <div key={item} className="rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold text-gray-700 border border-yellow-100">
+                      {item}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
 
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
-            <h3 className="font-bold text-red-800 text-sm mb-2 flex items-center gap-1.5"><FiAlertCircle size={15} /> Important Safety Notice</h3>
-            <p className="text-red-700 text-xs leading-relaxed">NaijaFixHub does not process payments between artisans and clients. All payments are handled directly between you and the client. Listing scam content or misleading information may result in permanent suspension.</p>
+            <h3 className="font-bold text-red-800 text-sm mb-2 flex items-center gap-1.5">
+              <FiAlertCircle size={15} /> Important Safety Notice
+            </h3>
+            <p className="text-red-700 text-xs leading-relaxed">
+              NaijaFixHub does not process payments between artisans and clients. All payments (cash, bank transfer, WhatsApp deals)
+              are handled directly between you and the client. We are not responsible for any financial disputes.
+              Listing scam content (advance fees, gift card requests) will result in permanent ban.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+            <p className="flex items-start gap-2 text-sm text-emerald-800">
+              <FiShield className="mt-0.5 flex-shrink-0" />
+              Approved listings can earn stronger trust signals when details, pricing, and contact information are complete and accurate.
+            </p>
           </div>
 
           <div className="flex items-start gap-3">
             <input type="checkbox" {...step3Form.register('agreeTerms')} id="agreeTerms" className="mt-1 w-5 h-5 accent-primary-600 rounded" />
             <label htmlFor="agreeTerms" className="text-sm text-gray-700 cursor-pointer">
-              I confirm that my listing contains accurate information. I agree not to post scam content, request advance fees, or mislead clients. I understand that NaijaFixHub does not handle payments. <Link to="/terms" className="text-primary-600 underline">Terms of Service</Link>
+              I confirm that my listing contains accurate information. I agree not to post scam content, request advance fees, or mislead clients.
+              I understand that NaijaFixHub does not handle payments.{' '}
+              <Link to="/terms" className="text-primary-600 underline">Terms of Service</Link>
             </label>
           </div>
-          {step3Form.formState.errors.agreeTerms && <p className="text-red-500 text-xs -mt-3">{step3Form.formState.errors.agreeTerms.message}</p>}
+          {step3Form.formState.errors.agreeTerms && (
+            <p className="text-red-500 text-xs -mt-3">{step3Form.formState.errors.agreeTerms.message}</p>
+          )}
 
           <div className="flex gap-3">
-            <button type="button" onClick={() => setStep(2)} className="btn-ghost flex items-center gap-1 border border-gray-200"><FiArrowLeft size={16} /> Back</button>
+            <button type="button" onClick={() => setStep(2)} className="btn-ghost flex items-center gap-1 border border-gray-200">
+              <FiArrowLeft size={16} /> Back
+            </button>
             <button type="submit" disabled={loading} className="btn-primary flex-1 flex items-center justify-center gap-2">
-              {loading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FiCheck size={18} />}
+              {loading ? (
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <FiCheck size={18} />
+              )}
               {loading ? 'Submitting...' : 'Submit for Review'}
             </button>
           </div>
