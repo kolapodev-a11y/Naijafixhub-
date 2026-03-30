@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer } from 'react'
+import React, { createContext, useCallback, useContext, useMemo, useReducer } from 'react'
 
 const AppContext = createContext(null)
 
@@ -32,22 +32,44 @@ function appReducer(state, action) {
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, initialState)
 
-  const setStateFilter = (s) => dispatch({ type: 'SET_STATE_FILTER', payload: s })
-  const setCategoryFilter = (c) => dispatch({ type: 'SET_CATEGORY_FILTER', payload: c })
-  const setSearchQuery = (q) => dispatch({ type: 'SET_SEARCH_QUERY', payload: q })
-  const addNotification = (n) => dispatch({ type: 'ADD_NOTIFICATION', payload: n })
-  const clearNotifications = () => dispatch({ type: 'CLEAR_NOTIFICATIONS' })
-  const setPendingCount = (n) => dispatch({ type: 'SET_PENDING_COUNT', payload: n })
+  const setStateFilter = useCallback((value) => {
+    dispatch({ type: 'SET_STATE_FILTER', payload: value })
+  }, [])
 
-  return (
-    <AppContext.Provider value={{
+  const setCategoryFilter = useCallback((value) => {
+    dispatch({ type: 'SET_CATEGORY_FILTER', payload: value })
+  }, [])
+
+  const setSearchQuery = useCallback((value) => {
+    dispatch({ type: 'SET_SEARCH_QUERY', payload: value })
+  }, [])
+
+  const addNotification = useCallback((value) => {
+    dispatch({ type: 'ADD_NOTIFICATION', payload: value })
+  }, [])
+
+  const clearNotifications = useCallback(() => {
+    dispatch({ type: 'CLEAR_NOTIFICATIONS' })
+  }, [])
+
+  const setPendingCount = useCallback((value) => {
+    dispatch({ type: 'SET_PENDING_COUNT', payload: value })
+  }, [])
+
+  const value = useMemo(
+    () => ({
       ...state,
-      setStateFilter, setCategoryFilter, setSearchQuery,
-      addNotification, clearNotifications, setPendingCount,
-    }}>
-      {children}
-    </AppContext.Provider>
+      setStateFilter,
+      setCategoryFilter,
+      setSearchQuery,
+      addNotification,
+      clearNotifications,
+      setPendingCount,
+    }),
+    [state, setStateFilter, setCategoryFilter, setSearchQuery, addNotification, clearNotifications, setPendingCount],
   )
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
 
 export function useApp() {
