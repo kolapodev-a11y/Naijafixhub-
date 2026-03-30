@@ -6,15 +6,17 @@ const USER_KEY = 'naijafixhub_user'
 
 const AuthContext = createContext(null)
 
+const readStoredUser = () => {
+  try {
+    const raw = localStorage.getItem(USER_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 const initialState = {
-  user: (() => {
-    try {
-      const raw = localStorage.getItem(USER_KEY)
-      return raw ? JSON.parse(raw) : null
-    } catch {
-      return null
-    }
-  })(),
+  user: readStoredUser(),
   token: localStorage.getItem(TOKEN_KEY) || null,
   loading: true,
 }
@@ -22,35 +24,17 @@ const initialState = {
 function reducer(state, action) {
   switch (action.type) {
     case 'SET_AUTH':
-      return {
-        ...state,
-        user: action.payload.user,
-        token: action.payload.token,
-        loading: false,
-      }
+      return { ...state, user: action.payload.user, token: action.payload.token, loading: false }
     case 'UPDATE_USER':
-      return {
-        ...state,
-        user: action.payload,
-      }
+      return { ...state, user: action.payload }
     case 'STOP_LOADING':
-      return {
-        ...state,
-        loading: false,
-      }
+      return { ...state, loading: false }
     case 'LOGOUT':
-      return {
-        user: null,
-        token: null,
-        loading: false,
-      }
+      return { user: null, token: null, loading: false }
     default:
       return state
   }
 }
-
-const canOfferServices = (role) => ['artisan', 'both', 'admin'].includes(role)
-const canRequestServices = (role) => ['user', 'both', 'admin'].includes(role)
 
 export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
@@ -64,9 +48,8 @@ export function AuthProvider({ children }) {
 
       try {
         const { data } = await authAPI.getMe()
-        const nextPayload = { user: data.user, token: state.token }
         localStorage.setItem(USER_KEY, JSON.stringify(data.user))
-        dispatch({ type: 'SET_AUTH', payload: nextPayload })
+        dispatch({ type: 'SET_AUTH', payload: { user: data.user, token: state.token } })
       } catch {
         localStorage.removeItem(TOKEN_KEY)
         localStorage.removeItem(USER_KEY)
@@ -84,13 +67,23 @@ export function AuthProvider({ children }) {
     return data.user
   }
 
+  const accountType = state.user?.accountType || 'customer'
+  const isAdmin = state.user?.role === 'admin'
+  const canOfferServices = isAdmin || ['provider', 'both'].includes(accountType)
+  const canRequestServices = isAdmin || ['customer', 'both'].includes(accountType)
+  const hasPremiumProvider = Boolean(
+    state.user?.isPremiumProvider && (!state.user?.premiumExpiresAt || new Date(state.user.premiumExpiresAt) >= new Date()),
+  )
+
   const value = useMemo(
     () => ({
       ...state,
+      accountType,
+      isAdmin,
+      canOfferServices,
+      canRequestServices,
+      hasPremiumProvider,
       isAuthenticated: Boolean(state.token && state.user),
-      isAdmin: state.user?.role === 'admin',
-      canOfferServices: canOfferServices(state.user?.role),
-      canRequestServices: canRequestServices(state.user?.role),
 
       async login(payload) {
         const { data } = await authAPI.login(payload)
@@ -124,7 +117,7 @@ export function AuthProvider({ children }) {
         dispatch({ type: 'LOGOUT' })
       },
     }),
-    [state],
+    [state, accountType, isAdmin, canOfferServices, canRequestServices, hasPremiumProvider],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
