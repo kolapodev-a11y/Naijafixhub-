@@ -1,4 +1,4 @@
-import { SCAM_KEYWORDS } from './constants'
+import { API_BASE_URL, SCAM_KEYWORDS } from './constants'
 
 export const formatPrice = (price) => {
   if (!price && price !== 0) return 'Price on request'
@@ -65,6 +65,46 @@ export const renderStars = (rating) => {
 export const getInitials = (name) => {
   if (!name) return '??'
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+}
+
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0'])
+
+const getBackendAssetBaseUrl = () => API_BASE_URL.replace(/\/api\/?$/, '')
+
+export const resolveAssetUrl = (assetUrl) => {
+  if (!assetUrl || typeof assetUrl !== 'string') return ''
+
+  const value = assetUrl.trim()
+  if (!value) return ''
+
+  if (
+    value.startsWith('data:') ||
+    value.startsWith('blob:') ||
+    value.startsWith('http://') ||
+    value.startsWith('https://')
+  ) {
+    if (!value.startsWith('http')) return value
+
+    try {
+      const parsed = new URL(value)
+      if (LOCAL_HOSTS.has(parsed.hostname)) {
+        const backendBaseUrl = getBackendAssetBaseUrl()
+        return `${backendBaseUrl}${parsed.pathname}${parsed.search}${parsed.hash}`
+      }
+    } catch {
+      return value
+    }
+
+    return value
+  }
+
+  const backendBaseUrl = getBackendAssetBaseUrl()
+
+  if (value.startsWith('/')) {
+    return `${backendBaseUrl}${value}`
+  }
+
+  return `${backendBaseUrl}/${value.replace(/^\.?\//, '')}`
 }
 
 export const isAdmin = (user) => {
