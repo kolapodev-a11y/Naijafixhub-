@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { FiMapPin, FiShield, FiStar, FiMessageCircle } from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
 import { StarDisplay } from '../ui/StarRating'
-import { formatPrice, truncate, generateWhatsAppLink, timeAgo } from '../../utils/helpers'
+import { formatPrice, truncate, generateWhatsAppLink, resolveAssetUrl, timeAgo } from '../../utils/helpers'
 import { CATEGORIES } from '../../utils/constants'
 
 export default function ArtisanCard({ artisan }) {
@@ -19,7 +19,7 @@ export default function ArtisanCard({ artisan }) {
       <div className="relative h-44 sm:h-48 overflow-hidden bg-gradient-to-br from-primary-100 to-accent-100">
         {artisan.photos?.[0] ? (
           <img
-            src={artisan.photos[0]}
+            src={resolveAssetUrl(artisan.photos[0])}
             alt={artisan.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
