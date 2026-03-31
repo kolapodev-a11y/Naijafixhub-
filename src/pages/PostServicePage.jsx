@@ -9,7 +9,7 @@ import { CATEGORIES, NIGERIAN_STATES } from '../utils/constants'
 import { containsScamKeywords } from '../utils/helpers'
 import toast from 'react-hot-toast'
 import { FiUpload, FiCheck, FiAlertCircle, FiArrowRight, FiArrowLeft, FiShield } from 'react-icons/fi'
-import { FaWhatsapp, FaCrown } from 'react-icons/fa'
+import { FaWhatsapp } from 'react-icons/fa'
 
 const step1Schema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters').max(100),
@@ -28,7 +28,6 @@ const step2Schema = z.object({
 })
 
 const step3Schema = z.object({
-  isPremium: z.boolean().optional(),
   agreeTerms: z.literal(true, { errorMap: () => ({ message: 'You must agree to terms' }) }),
 })
 
@@ -67,7 +66,7 @@ export default function PostServicePage() {
 
   const step3Form = useForm({
     resolver: zodResolver(step3Schema),
-    defaultValues: { isPremium: false, agreeTerms: false },
+    defaultValues: { agreeTerms: false },
   })
 
   useEffect(() => {
@@ -76,7 +75,7 @@ export default function PostServicePage() {
     window.requestAnimationFrame(() => {
       if (step === 1) step1Form.setFocus('title')
       if (step === 2) step2Form.setFocus('whatsapp')
-      if (step === 3) step3Form.setFocus('isPremium')
+      if (step === 3) step3Form.setFocus('agreeTerms')
     })
   }, [step, step1Form, step2Form, step3Form])
 
@@ -203,7 +202,7 @@ export default function PostServicePage() {
                 setFormData({})
                 step1Form.reset()
                 step2Form.reset()
-                step3Form.reset({ isPremium: false, agreeTerms: false })
+                step3Form.reset({ agreeTerms: false })
               }}
               className="flex-1 btn-primary text-sm"
             >
@@ -388,37 +387,6 @@ export default function PostServicePage() {
       {step === 3 && (
         <form onSubmit={handleStep3} className="card p-6 space-y-5">
           <h2 className="font-bold text-lg text-gray-800">Step 3: Safety & Submit</h2>
-
-          <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-2xl p-5">
-            <div className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                {...step3Form.register('isPremium')}
-                id="isPremium"
-                className="mt-1 w-5 h-5 accent-yellow-500 rounded"
-              />
-              <div>
-                <label htmlFor="isPremium" className="font-bold text-gray-800 cursor-pointer flex items-center gap-1.5">
-                  <FaCrown size={16} className="text-yellow-500" />
-                  Premium visibility request — ₦5,000/month
-                </label>
-                <p className="text-sm text-gray-600 mt-1">
-                  Request stronger placement for your listing with faster verification review, better search visibility, and visible trust badges that help clients choose you with confidence.
-                </p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                  {[
-                    'Verification priority',
-                    'Better listing placement',
-                    'Trust badges for credibility',
-                  ].map((item) => (
-                    <div key={item} className="rounded-xl bg-white/80 px-3 py-2 text-xs font-semibold text-gray-700 border border-yellow-100">
-                      {item}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
 
           <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
             <h3 className="font-bold text-red-800 text-sm mb-2 flex items-center gap-1.5">

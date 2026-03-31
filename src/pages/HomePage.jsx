@@ -166,7 +166,7 @@ export default function HomePage() {
           <FaCrown size={36} className="mx-auto mb-3 text-yellow-600" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Premium upgrade for all your listings</h2>
           <p className="mx-auto mb-5 max-w-2xl text-sm text-gray-600">
-            One Paystack payment upgrades all your current listings and automatically applies premium status to future listings too. The admin team also gets an in-app alert when your upgrade is completed.
+            One successful upgrade covers your current listings and future listings too, helping them stand out with stronger placement, better trust signals, and a verified badge while your premium plan is active.
           </p>
           {hasPremiumProvider ? (
             <div className="inline-flex items-center gap-2 rounded-full border border-yellow-300 bg-white px-5 py-3 text-sm font-semibold text-yellow-800">

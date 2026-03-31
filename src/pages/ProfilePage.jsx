@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import { authAPI, artisanAPI } from '../utils/api'
-import { getInitials, formatPrice, timeAgo } from '../utils/helpers'
+import { getInitials, formatPrice, resolveAssetUrl, timeAgo } from '../utils/helpers'
 import { CATEGORIES, NIGERIAN_STATES } from '../utils/constants'
 import Modal from '../components/ui/Modal'
-import { FiUser, FiMail, FiSave, FiLock, FiTrash2, FiEdit3, FiPhone, FiShield, FiBriefcase } from 'react-icons/fi'
+import { FiUser, FiMail, FiSave, FiLock, FiTrash2, FiEdit3, FiPhone, FiShield, FiBriefcase, FiLogOut, FiImage } from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
 
 const accountOptions = [
@@ -204,6 +204,16 @@ export default function ProfilePage() {
             <div className="flex items-center gap-2"><FiPhone className="text-gray-400" /> {user?.phone || 'No phone added yet'}</div>
             <div className="flex items-center gap-2"><FiBriefcase className="text-gray-400" /> {accountDescription}</div>
           </div>
+
+          <button
+            onClick={() => {
+              logout()
+              navigate('/')
+            }}
+            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+          >
+            <FiLogOut size={15} /> Log Out
+          </button>
         </div>
 
         <div className="space-y-6">
@@ -280,7 +290,17 @@ export default function ProfilePage() {
                 {services.map((service) => (
                   <div key={service._id} className="rounded-2xl border border-gray-100 p-4">
                     <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div>
+                      <div className="flex flex-1 gap-4">
+                        <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-primary-50 border border-primary-100">
+                          {service.photos?.[0] ? (
+                            <img src={resolveAssetUrl(service.photos[0])} alt={service.title} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-primary-500">
+                              <FiImage size={26} />
+                            </div>
+                          )}
+                        </div>
+                        <div>
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <h3 className="font-bold text-gray-800">{service.title}</h3>
                           <span className={service.status === 'approved' ? 'badge-verified' : service.status === 'rejected' ? 'badge-rejected' : 'badge-pending'}>{service.status}</span>
@@ -291,6 +311,7 @@ export default function ProfilePage() {
                         <p className="mt-2 text-sm font-semibold text-primary-700">{formatPrice(service.startingPrice)}</p>
                         {service.rejectionReason && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">Rejection reason: {service.rejectionReason}</p>}
                         <p className="mt-2 text-xs text-gray-400">Updated {timeAgo(service.updatedAt || service.createdAt)}</p>
+                      </div>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => openEditService(service)} className="btn-outline inline-flex items-center gap-2 text-sm"><FiEdit3 size={14} /> Edit</button>

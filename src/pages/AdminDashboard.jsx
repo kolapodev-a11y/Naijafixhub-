@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { useApp } from '../context/AppContext'
 import { adminAPI } from '../utils/api'
-import { formatPrice, timeAgo } from '../utils/helpers'
+import { formatPrice, resolveAssetUrl, timeAgo } from '../utils/helpers'
 import { CATEGORIES } from '../utils/constants'
 import Modal from '../components/ui/Modal'
 import { PageLoader } from '../components/ui/LoadingSpinner'
@@ -256,7 +256,7 @@ export default function AdminDashboard() {
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                           <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                             {listing.photos?.[0] ? (
-                              <img src={listing.photos[0]} alt={listing.title} className="w-full h-full object-cover" />
+                              <img src={resolveAssetUrl(listing.photos[0])} alt={listing.title} className="w-full h-full object-cover" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-2xl">{category?.icon || '🔧'}</div>
                             )}
@@ -473,7 +473,7 @@ export default function AdminDashboard() {
             <div className="flex flex-col gap-4 sm:flex-row">
               <div className="h-36 w-full overflow-hidden rounded-2xl bg-gray-100 sm:w-44">
                 {viewingListing.photos?.[0] ? (
-                  <img src={viewingListing.photos[0]} alt={viewingListing.title} className="h-full w-full object-cover" />
+                  <img src={resolveAssetUrl(viewingListing.photos[0])} alt={viewingListing.title} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-4xl">
                     {CATEGORIES.find((item) => item.id === viewingListing.category)?.icon || '🔧'}

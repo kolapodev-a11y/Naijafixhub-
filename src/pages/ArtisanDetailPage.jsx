@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { artisanAPI, reportAPI } from '../utils/api'
-import { formatPrice, generateWhatsAppLink, timeAgo, getInitials } from '../utils/helpers'
+import { formatPrice, generateWhatsAppLink, timeAgo, getInitials, resolveAssetUrl } from '../utils/helpers'
 import { CATEGORIES } from '../utils/constants'
 import { StarDisplay, StarInput } from '../components/ui/StarRating'
 import Modal from '../components/ui/Modal'
@@ -96,7 +96,7 @@ export default function ArtisanDetailPage() {
           {artisan.photos?.length > 0 && (
             <div className="card overflow-hidden">
               <div className="relative h-72 sm:h-96">
-                <img src={artisan.photos[activePhoto]} alt={artisan.title} className="w-full h-full object-cover" />
+                <img src={resolveAssetUrl(artisan.photos[activePhoto])} alt={artisan.title} className="w-full h-full object-cover" />
                 {artisan.isPremium && <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-yellow-400 text-yellow-900 text-sm font-bold px-3 py-1.5 rounded-full shadow-lg"><FaCrown size={12} /> TOP ARTISAN</div>}
                 {artisan.status === 'approved' && <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow"><FiShield size={12} /> Verified</div>}
               </div>
@@ -104,7 +104,7 @@ export default function ArtisanDetailPage() {
                 <div className="flex gap-2 p-3 overflow-x-auto scrollbar-hide">
                   {artisan.photos.map((photo, i) => (
                     <button key={i} onClick={() => setActivePhoto(i)} className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${activePhoto === i ? 'border-primary-500' : 'border-gray-200'}`}>
-                      <img src={photo} alt={`photo ${i + 1}`} className="w-full h-full object-cover" />
+                      <img src={resolveAssetUrl(photo)} alt={`photo ${i + 1}`} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
