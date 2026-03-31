@@ -72,7 +72,7 @@ export function AuthProvider({ children }) {
   const canOfferServices = isAdmin || ['provider', 'both'].includes(accountType)
   const canRequestServices = isAdmin || ['customer', 'both'].includes(accountType)
   const hasPremiumProvider = Boolean(
-    state.user?.isPremiumProvider && (!state.user?.premiumExpiresAt || new Date(state.user.premiumExpiresAt) >= new Date()),
+    state.user?.isPremiumProvider && state.user?.premiumExpiresAt && new Date(state.user.premiumExpiresAt) >= new Date(),
   )
 
   const value = useMemo(
