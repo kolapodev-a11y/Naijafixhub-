@@ -81,6 +81,7 @@ function AppRoutes() {
         <Route path="/login" element={<Layout noFooter><LoginPage /></Layout>} />
         <Route path="/register" element={<Layout noFooter><RegisterPage /></Layout>} />
         <Route path="/payment/verify" element={<Layout><PaymentCallbackPage /></Layout>} />
+        <Route path="/payment/callback" element={<Layout><PaymentCallbackPage /></Layout>} />
 
         <Route
           path="/profile"
