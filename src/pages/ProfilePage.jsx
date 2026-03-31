@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
 import { authAPI, artisanAPI } from '../utils/api'
-import { getInitials, formatPrice, resolveAssetUrl, timeAgo } from '../utils/helpers'
+import { getInitials, formatPrice, formatDate, resolveAssetUrl, timeAgo } from '../utils/helpers'
 import { CATEGORIES, NIGERIAN_STATES } from '../utils/constants'
 import Modal from '../components/ui/Modal'
-import { FiUser, FiMail, FiSave, FiLock, FiTrash2, FiEdit3, FiPhone, FiShield, FiBriefcase, FiLogOut, FiImage } from 'react-icons/fi'
+import { FiUser, FiMail, FiSave, FiLock, FiTrash2, FiEdit3, FiPhone, FiShield, FiBriefcase, FiLogOut, FiImage, FiUpload, FiX } from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
 
 const accountOptions = [
@@ -39,6 +39,9 @@ export default function ProfilePage() {
   const [editingService, setEditingService] = useState(null)
   const [serviceForm, setServiceForm] = useState(emptyServiceForm)
   const [serviceSaving, setServiceSaving] = useState(false)
+  const [existingServicePhotos, setExistingServicePhotos] = useState([])
+  const [newServicePhotos, setNewServicePhotos] = useState([])
+  const [servicePhotoError, setServicePhotoError] = useState('')
 
   const profileForm = useForm({
     defaultValues: {
@@ -52,6 +55,21 @@ export default function ProfilePage() {
   const passwordForm = useForm({
     defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
   })
+
+  const clearNewServicePhotos = () => {
+    setNewServicePhotos((prev) => {
+      prev.forEach((photo) => URL.revokeObjectURL(photo.preview))
+      return []
+    })
+  }
+
+  const resetServiceEditor = () => {
+    clearNewServicePhotos()
+    setEditingService(null)
+    setServiceForm(emptyServiceForm)
+    setExistingServicePhotos([])
+    setServicePhotoError('')
+  }
 
   const loadServices = async () => {
     if (!user) return
@@ -129,7 +147,10 @@ export default function ProfilePage() {
   }
 
   const openEditService = (service) => {
+    clearNewServicePhotos()
     setEditingService(service)
+    setExistingServicePhotos(service.photos || [])
+    setServicePhotoError('')
     setServiceForm({
       title: service.title || '',
       category: service.category || '',
@@ -144,17 +165,70 @@ export default function ProfilePage() {
     })
   }
 
+  const handleServicePhotoChange = (event) => {
+    const files = Array.from(event.target.files || [])
+    if (!files.length) return
+
+    const invalidFile = files.find((file) => !file.type.startsWith('image/'))
+    if (invalidFile) {
+      setServicePhotoError('Only image files can be uploaded.')
+      event.target.value = ''
+      return
+    }
+
+    const oversizedFile = files.find((file) => file.size > 5 * 1024 * 1024)
+    if (oversizedFile) {
+      setServicePhotoError('Each photo must be 5MB or less.')
+      event.target.value = ''
+      return
+    }
+
+    const totalPhotos = existingServicePhotos.length + newServicePhotos.length + files.length
+    if (totalPhotos > 5) {
+      setServicePhotoError('Maximum 5 photos allowed per service.')
+      event.target.value = ''
+      return
+    }
+
+    setServicePhotoError('')
+    const preparedFiles = files.map((file) => ({ file, preview: URL.createObjectURL(file) }))
+    setNewServicePhotos((prev) => [...prev, ...preparedFiles])
+    event.target.value = ''
+  }
+
+  const removeExistingServicePhoto = (photoToRemove) => {
+    setExistingServicePhotos((prev) => prev.filter((photo) => photo !== photoToRemove))
+    setServicePhotoError('')
+  }
+
+  const removeNewServicePhoto = (indexToRemove) => {
+    setNewServicePhotos((prev) => {
+      const next = [...prev]
+      const [removed] = next.splice(indexToRemove, 1)
+      if (removed?.preview) URL.revokeObjectURL(removed.preview)
+      return next
+    })
+    setServicePhotoError('')
+  }
+
   const saveService = async () => {
     if (!editingService) return
+
+    const totalPhotos = existingServicePhotos.length + newServicePhotos.length
+    if (totalPhotos === 0) {
+      setServicePhotoError('Keep at least one photo on your listing.')
+      return
+    }
 
     setServiceSaving(true)
     try {
       const fd = new FormData()
       Object.entries(serviceForm).forEach(([key, value]) => fd.append(key, value || ''))
+      existingServicePhotos.forEach((photo) => fd.append('retainedPhotos', photo))
+      newServicePhotos.forEach(({ file }) => fd.append('photos', file))
       await artisanAPI.update(editingService._id, fd)
-      toast.success('Service updated and resubmitted for review')
-      setEditingService(null)
-      setServiceForm(emptyServiceForm)
+      toast.success('Service updated with your photo changes and resubmitted for review')
+      resetServiceEditor()
       loadServices()
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update service')
@@ -188,6 +262,7 @@ export default function ProfilePage() {
               <div className="mt-2 flex flex-wrap gap-2">
                 <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${user?.role === 'admin' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`}>{user?.role === 'admin' ? 'Admin' : 'Member'}</span>
                 <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 uppercase">{user?.accountType}</span>
+                {hasPremiumProvider && <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-semibold text-yellow-800"><FaCrown size={10} /> Premium</span>}
               </div>
             </div>
           </div>
@@ -196,6 +271,7 @@ export default function ProfilePage() {
             <div className="mb-6 rounded-2xl border border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50 p-4 text-sm text-yellow-900">
               <div className="flex items-center gap-2 font-semibold mb-1"><FaCrown className="text-yellow-500" /> Premium provider active</div>
               <p>All your current and future listings receive premium placement automatically.</p>
+              {user?.premiumExpiresAt && <p className="mt-2 text-xs font-medium text-yellow-800">Active until {formatDate(user.premiumExpiresAt)}</p>}
             </div>
           )}
 
@@ -271,7 +347,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
                 <h2 className="text-lg font-bold text-gray-800">My services</h2>
-                <p className="text-sm text-gray-500">View, edit, or delete your service listings.</p>
+                <p className="text-sm text-gray-500">View, edit text, and manage listing photos professionally.</p>
               </div>
               {canOfferServices && <button onClick={loadServices} className="btn-outline text-sm">Refresh</button>}
             </div>
@@ -301,17 +377,17 @@ export default function ProfilePage() {
                           )}
                         </div>
                         <div>
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <h3 className="font-bold text-gray-800">{service.title}</h3>
-                          <span className={service.status === 'approved' ? 'badge-verified' : service.status === 'rejected' ? 'badge-rejected' : 'badge-pending'}>{service.status}</span>
-                          {service.isPremium && <span className="badge-premium inline-flex items-center gap-1"><FaCrown size={10} /> Premium</span>}
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            <h3 className="font-bold text-gray-800">{service.title}</h3>
+                            <span className={service.status === 'approved' ? 'badge-verified' : service.status === 'rejected' ? 'badge-rejected' : 'badge-pending'}>{service.status}</span>
+                            {service.isPremium && <span className="badge-premium inline-flex items-center gap-1"><FaCrown size={10} /> Premium</span>}
+                          </div>
+                          <p className="text-sm text-gray-500">{CATEGORIES.find((item) => item.id === service.category)?.name || service.category} • {service.location}</p>
+                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">{service.description}</p>
+                          <p className="mt-2 text-sm font-semibold text-primary-700">{formatPrice(service.startingPrice)}</p>
+                          {service.rejectionReason && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">Rejection reason: {service.rejectionReason}</p>}
+                          <p className="mt-2 text-xs text-gray-400">Updated {timeAgo(service.updatedAt || service.createdAt)}</p>
                         </div>
-                        <p className="text-sm text-gray-500">{CATEGORIES.find((item) => item.id === service.category)?.name || service.category} • {service.location}</p>
-                        <p className="mt-2 text-sm text-gray-600 line-clamp-2">{service.description}</p>
-                        <p className="mt-2 text-sm font-semibold text-primary-700">{formatPrice(service.startingPrice)}</p>
-                        {service.rejectionReason && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">Rejection reason: {service.rejectionReason}</p>}
-                        <p className="mt-2 text-xs text-gray-400">Updated {timeAgo(service.updatedAt || service.createdAt)}</p>
-                      </div>
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => openEditService(service)} className="btn-outline inline-flex items-center gap-2 text-sm"><FiEdit3 size={14} /> Edit</button>
@@ -332,8 +408,44 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <Modal isOpen={!!editingService} onClose={() => setEditingService(null)} title="Edit Service Listing">
-        <div className="space-y-4">
+      <Modal isOpen={!!editingService} onClose={resetServiceEditor} title="Edit Service Listing">
+        <div className="space-y-5">
+          <div>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <label className="label">Listing photos</label>
+                <p className="text-xs text-gray-500">Remove old photos, upload new ones, and keep up to 5 photos. The first photo becomes the cover image.</p>
+              </div>
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-primary-200 px-4 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-50">
+                <FiUpload size={14} /> Add photos
+                <input type="file" accept="image/*" multiple className="hidden" onChange={handleServicePhotoChange} />
+              </label>
+            </div>
+            {(existingServicePhotos.length > 0 || newServicePhotos.length > 0) && (
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                {existingServicePhotos.map((photo, index) => (
+                  <div key={photo} className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                    <img src={resolveAssetUrl(photo)} alt={`Existing service ${index + 1}`} className="h-28 w-full object-cover" />
+                    {index === 0 && <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Cover</span>}
+                    <button type="button" onClick={() => removeExistingServicePhoto(photo)} className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-red-600 shadow hover:bg-white">
+                      <FiX size={14} />
+                    </button>
+                  </div>
+                ))}
+                {newServicePhotos.map((photo, index) => (
+                  <div key={photo.preview} className="relative overflow-hidden rounded-2xl border border-primary-200 bg-primary-50">
+                    <img src={photo.preview} alt={`New service ${index + 1}`} className="h-28 w-full object-cover" />
+                    <span className="absolute left-2 top-2 rounded-full bg-primary-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">New</span>
+                    <button type="button" onClick={() => removeNewServicePhoto(index)} className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-red-600 shadow hover:bg-white">
+                      <FiX size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {servicePhotoError && <p className="mt-2 text-xs text-red-500">{servicePhotoError}</p>}
+          </div>
+
           <div>
             <label className="label">Title</label>
             <input value={serviceForm.title} onChange={(e) => setServiceForm((prev) => ({ ...prev, title: e.target.value }))} className="input-field" />
@@ -388,9 +500,9 @@ export default function ProfilePage() {
               <input value={serviceForm.phone} onChange={(e) => setServiceForm((prev) => ({ ...prev, phone: e.target.value }))} className="input-field" />
             </div>
           </div>
-          <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">Editing a listing will resubmit it for admin review.</div>
+          <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">Editing a listing will resubmit it for admin review, including your picture updates.</div>
           <div className="flex gap-3">
-            <button onClick={() => setEditingService(null)} className="flex-1 btn-ghost border border-gray-200">Cancel</button>
+            <button onClick={resetServiceEditor} className="flex-1 btn-ghost border border-gray-200">Cancel</button>
             <button onClick={saveService} disabled={serviceSaving} className="flex-1 btn-primary">{serviceSaving ? 'Saving...' : 'Save Service'}</button>
           </div>
         </div>

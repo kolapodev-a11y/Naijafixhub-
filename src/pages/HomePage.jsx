@@ -162,24 +162,21 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="rounded-3xl border border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50 p-8 text-center">
-          <FaCrown size={36} className="mx-auto mb-3 text-yellow-600" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Premium upgrade for all your listings</h2>
-          <p className="mx-auto mb-5 max-w-2xl text-sm text-gray-600">
-            One successful upgrade covers your current listings and future listings too, helping them stand out with stronger placement, better trust signals, and a verified badge while your premium plan is active.
-          </p>
-          {hasPremiumProvider ? (
-            <div className="inline-flex items-center gap-2 rounded-full border border-yellow-300 bg-white px-5 py-3 text-sm font-semibold text-yellow-800">
-              <FaCrown /> Premium is already active on your provider account
-            </div>
-          ) : (
+        {!hasPremiumProvider && (
+          <section className="rounded-3xl border border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50 p-8 text-center">
+            <FaCrown size={36} className="mx-auto mb-3 text-yellow-600" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Premium upgrade for all your listings</h2>
+            <p className="mx-auto mb-5 max-w-2xl text-sm text-gray-600">
+              One successful upgrade covers your current listings and future listings too, helping them stand out with stronger placement,
+              better trust signals, and a premium badge while your plan is active.
+            </p>
             <button onClick={handlePremiumUpgrade} disabled={premiumLoading} className="inline-flex items-center gap-2 rounded-xl bg-yellow-500 px-8 py-3 font-bold text-yellow-950 transition hover:bg-yellow-400 disabled:opacity-70">
               {premiumLoading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-yellow-950/30 border-t-yellow-950" /> : <FaCrown size={16} />}
               {premiumLoading ? 'Starting payment...' : 'Upgrade to Premium – ₦5,000/month'}
             </button>
-          )}
-          {!isAuthenticated && <p className="mt-4 text-xs text-gray-500">You will be asked to sign in first.</p>}
-        </section>
+            {!isAuthenticated && <p className="mt-4 text-xs text-gray-500">You will be asked to sign in first.</p>}
+          </section>
+        )}
       </div>
     </div>
   )
