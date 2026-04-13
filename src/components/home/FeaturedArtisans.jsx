@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import Slider from 'react-slick'
 import ArtisanCard from '../artisan/ArtisanCard'
-import { artisanAPI } from '../../utils/api'
 import { SkeletonCard } from '../ui/LoadingSpinner'
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
@@ -17,17 +16,7 @@ function Arrow({ direction, onClick }) {
   )
 }
 
-export default function FeaturedArtisans() {
-  const [artisans, setArtisans] = useState([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    artisanAPI.getFeatured()
-      .then(r => setArtisans(r.data.artisans || []))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
-
+export default function FeaturedArtisans({ artisans = [], loading = false }) {
   const settings = {
     dots: true,
     infinite: artisans.length > 3,
@@ -52,7 +41,7 @@ export default function FeaturedArtisans() {
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1, 2, 3].map(i => <SkeletonCard key={i} />)}
+          {[1, 2, 3].map((i) => <SkeletonCard key={i} />)}
         </div>
       ) : artisans.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-200">
@@ -61,9 +50,13 @@ export default function FeaturedArtisans() {
       ) : (
         <div className="relative px-2">
           <Slider {...settings}>
-            {artisans.map(a => (
-              <div key={a._id} className="px-2">
-                <ArtisanCard artisan={a} />
+            {artisans.map((artisan, index) => (
+              <div key={artisan._id} className="px-2">
+                <ArtisanCard
+                  artisan={artisan}
+                  imageLoading={index < 2 ? 'eager' : 'lazy'}
+                  imageFetchPriority={index < 2 ? 'high' : 'auto'}
+                />
               </div>
             ))}
           </Slider>
