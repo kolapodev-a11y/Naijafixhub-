@@ -8,7 +8,7 @@ export const formatPrice = (price) => {
 export const formatDate = (dateString) => {
   const date = new Date(dateString)
   return date.toLocaleDateString('en-NG', {
-    day: 'numeric', month: 'short', year: 'numeric'
+    day: 'numeric', month: 'short', year: 'numeric',
   })
 }
 
@@ -31,28 +31,45 @@ export const timeAgo = (dateString) => {
 export const containsScamKeywords = (text) => {
   if (!text) return false
   const lower = text.toLowerCase()
-  return SCAM_KEYWORDS.some(kw => lower.includes(kw.toLowerCase()))
+  return SCAM_KEYWORDS.some((kw) => lower.includes(kw.toLowerCase()))
+}
+
+export const normalizePhoneNumber = (phone) => {
+  const cleaned = String(phone || '').replace(/\D/g, '')
+  if (!cleaned) return ''
+
+  if (cleaned.startsWith('234')) return `+${cleaned}`
+  if (cleaned.startsWith('0')) return `+234${cleaned.slice(1)}`
+  return `+234${cleaned}`
 }
 
 export const generateWhatsAppLink = (phone, message = '') => {
-  const cleaned = phone.replace(/\D/g, '')
-  const international = cleaned.startsWith('0')
-    ? `234${cleaned.slice(1)}`
-    : cleaned.startsWith('234')
-      ? cleaned
-      : `234${cleaned}`
+  const normalized = normalizePhoneNumber(phone).replace(/\D/g, '')
+  if (!normalized) return '#'
   const encoded = encodeURIComponent(message)
-  return `https://wa.me/${international}?text=${encoded}`
+  return `https://wa.me/${normalized}?text=${encoded}`
+}
+
+export const generateCallLink = (phone) => {
+  const normalized = normalizePhoneNumber(phone)
+  return normalized ? `tel:${normalized}` : '#'
+}
+
+export const generateSmsLink = (phone, message = '') => {
+  const normalized = normalizePhoneNumber(phone)
+  if (!normalized) return '#'
+  const encoded = encodeURIComponent(message)
+  return `sms:${normalized}?body=${encoded}`
 }
 
 export const truncate = (str, n = 120) => {
   if (!str) return ''
-  return str.length > n ? str.slice(0, n) + '…' : str
+  return str.length > n ? `${str.slice(0, n)}…` : str
 }
 
 export const capitalizeWords = (str) => {
   if (!str) return ''
-  return str.replace(/\b\w/g, c => c.toUpperCase())
+  return str.replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 export const renderStars = (rating) => {
@@ -64,7 +81,7 @@ export const renderStars = (rating) => {
 
 export const getInitials = (name) => {
   if (!name) return '??'
-  return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase()
+  return name.split(' ').slice(0, 2).map((w) => w[0]).join('').toUpperCase()
 }
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0'])

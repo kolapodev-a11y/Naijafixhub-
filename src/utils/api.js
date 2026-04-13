@@ -54,6 +54,7 @@ export const artisanAPI = {
     api.put(`/artisans/${id}`, data, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
+  updateServiceStatus: (id, serviceStatus) => api.patch(`/artisans/${id}/service-status`, { serviceStatus }),
   delete: (id) => api.delete(`/artisans/${id}`),
   getFeatured: () => api.get('/artisans/featured'),
   getMyListings: () => api.get('/artisans/my-listings'),
@@ -64,8 +65,9 @@ export const artisanAPI = {
 export const requestAPI = {
   create: (data) => api.post('/requests', data),
   getAll: (params) => api.get('/requests', { params }),
-  getById: (id) => api.get(`/requests/${id}`),
   getMine: () => api.get('/requests/mine'),
+  updateStatus: (id, status) => api.patch(`/requests/${id}/status`, { status }),
+  delete: (id) => api.delete(`/requests/${id}`),
 }
 
 export const reportAPI = {
