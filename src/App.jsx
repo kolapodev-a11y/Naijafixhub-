@@ -9,6 +9,7 @@ import { PageLoader } from './components/ui/LoadingSpinner'
 
 const HomePage = lazy(() => import('./pages/HomePage'))
 const SearchPage = lazy(() => import('./pages/SearchPage'))
+const RequestsPage = lazy(() => import('./pages/RequestsPage'))
 const ArtisanDetailPage = lazy(() => import('./pages/ArtisanDetailPage'))
 const PostServicePage = lazy(() => import('./pages/PostServicePage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -37,7 +38,7 @@ function TermsPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-6 text-3xl font-extrabold text-gray-800">Terms of Service</h1>
-      <div className="card space-y-4 p-8 text-sm leading-relaxed prose prose-gray max-w-none">
+      <div className="card prose prose-gray max-w-none space-y-4 p-8 text-sm leading-relaxed">
         <p>
           <strong>Last updated:</strong> {new Date().getFullYear()}
         </p>
@@ -58,7 +59,7 @@ function PrivacyPage() {
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-6 text-3xl font-extrabold text-gray-800">Privacy Policy</h1>
-      <div className="card space-y-4 p-8 text-sm leading-relaxed prose prose-gray max-w-none">
+      <div className="card prose prose-gray max-w-none space-y-4 p-8 text-sm leading-relaxed">
         <p>
           <strong>Last updated:</strong> {new Date().getFullYear()}
         </p>
@@ -77,6 +78,7 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Layout><HomePage /></Layout>} />
         <Route path="/search" element={<Layout><SearchPage /></Layout>} />
+        <Route path="/requests" element={<Layout><RequestsPage /></Layout>} />
         <Route path="/artisan/:id" element={<Layout><ArtisanDetailPage /></Layout>} />
         <Route path="/post-service" element={<Layout><PostServicePage /></Layout>} />
         <Route path="/login" element={<Layout noFooter><LoginPage /></Layout>} />
