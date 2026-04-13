@@ -283,6 +283,8 @@ export default function ProfilePage() {
 
           <button
             onClick={() => {
+              const confirmed = window.confirm('Are you sure you want to log out?')
+              if (!confirmed) return
               logout()
               navigate('/')
             }}
@@ -369,7 +371,7 @@ export default function ProfilePage() {
                       <div className="flex flex-1 gap-4">
                         <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-primary-50 border border-primary-100">
                           {service.photos?.[0] ? (
-                            <img src={resolveAssetUrl(service.photos[0])} alt={service.title} className="h-full w-full object-cover" />
+                            <img src={resolveAssetUrl(service.photos[0])} alt={service.title} className="h-full w-full object-contain bg-white p-2" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-primary-500">
                               <FiImage size={26} />
@@ -425,7 +427,7 @@ export default function ProfilePage() {
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                 {existingServicePhotos.map((photo, index) => (
                   <div key={photo} className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white">
-                    <img src={resolveAssetUrl(photo)} alt={`Existing service ${index + 1}`} className="h-28 w-full object-cover" />
+                    <img src={resolveAssetUrl(photo)} alt={`Existing service ${index + 1}`} className="h-28 w-full object-contain bg-white p-2" />
                     {index === 0 && <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Cover</span>}
                     <button type="button" onClick={() => removeExistingServicePhoto(photo)} className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-red-600 shadow hover:bg-white">
                       <FiX size={14} />
@@ -434,7 +436,7 @@ export default function ProfilePage() {
                 ))}
                 {newServicePhotos.map((photo, index) => (
                   <div key={photo.preview} className="relative overflow-hidden rounded-2xl border border-primary-200 bg-primary-50">
-                    <img src={photo.preview} alt={`New service ${index + 1}`} className="h-28 w-full object-cover" />
+                    <img src={photo.preview} alt={`New service ${index + 1}`} className="h-28 w-full object-contain bg-white p-2" />
                     <span className="absolute left-2 top-2 rounded-full bg-primary-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">New</span>
                     <button type="button" onClick={() => removeNewServicePhoto(index)} className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-red-600 shadow hover:bg-white">
                       <FiX size={14} />

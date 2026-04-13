@@ -22,6 +22,8 @@ import {
   FiMapPin,
   FiPhone,
   FiMessageCircle,
+  FiChevronLeft,
+  FiChevronRight,
 } from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
 
@@ -48,6 +50,7 @@ export default function AdminDashboard() {
   const [rejectReason, setRejectReason] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [viewingListing, setViewingListing] = useState(null)
+  const [viewingImageIndex, setViewingImageIndex] = useState(0)
   const [actionId, setActionId] = useState('')
 
   const loadDashboard = async ({ silent = false } = {}) => {
@@ -126,6 +129,29 @@ export default function AdminDashboard() {
         .includes(query),
     )
   }, [dashboardData.users, searchQuery])
+
+  const openListingViewer = (listing) => {
+    setViewingListing(listing)
+    setViewingImageIndex(0)
+  }
+
+  const closeListingViewer = () => {
+    setViewingListing(null)
+    setViewingImageIndex(0)
+  }
+
+  const viewingPhotos = viewingListing?.photos || []
+  const hasMultipleViewingPhotos = viewingPhotos.length > 1
+
+  const showPreviousViewingPhoto = () => {
+    if (!hasMultipleViewingPhotos) return
+    setViewingImageIndex((currentIndex) => (currentIndex === 0 ? viewingPhotos.length - 1 : currentIndex - 1))
+  }
+
+  const showNextViewingPhoto = () => {
+    if (!hasMultipleViewingPhotos) return
+    setViewingImageIndex((currentIndex) => (currentIndex === viewingPhotos.length - 1 ? 0 : currentIndex + 1))
+  }
 
   const handleApprove = async (id) => {
     setActionId(id)
@@ -256,7 +282,7 @@ export default function AdminDashboard() {
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                           <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
                             {listing.photos?.[0] ? (
-                              <img src={resolveAssetUrl(listing.photos[0])} alt={listing.title} className="w-full h-full object-cover" />
+                              <img src={resolveAssetUrl(listing.photos[0])} alt={listing.title} className="h-full w-full object-contain bg-white p-1.5" />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center text-2xl">{category?.icon || '🔧'}</div>
                             )}
@@ -276,7 +302,7 @@ export default function AdminDashboard() {
 
                           <div className="grid gap-2 sm:grid-cols-3 lg:w-[340px]">
                             <button
-                              onClick={() => setViewingListing(listing)}
+                              onClick={() => openListingViewer(listing)}
                               className="flex items-center justify-center gap-1.5 border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold px-4 py-2 rounded-xl transition-colors"
                             >
                               <FiEye size={14} /> View
@@ -389,7 +415,7 @@ export default function AdminDashboard() {
                             <td className="px-4 py-3"><StatusBadge status={listing.status} /></td>
                             <td className="px-4 py-3 text-gray-400">{timeAgo(listing.createdAt)}</td>
                             <td className="px-4 py-3">
-                              <button onClick={() => setViewingListing(listing)} className="text-primary-700 hover:text-primary-800 font-medium inline-flex items-center gap-1">
+                              <button onClick={() => openListingViewer(listing)} className="text-primary-700 hover:text-primary-800 font-medium inline-flex items-center gap-1">
                                 <FiEye size={14} /> View
                               </button>
                             </td>
@@ -467,29 +493,57 @@ export default function AdminDashboard() {
         </div>
       </Modal>
 
-      <Modal isOpen={!!viewingListing} onClose={() => setViewingListing(null)} title="👀 Listing Details" size="lg">
+      <Modal isOpen={!!viewingListing} onClose={closeListingViewer} title="👀 Listing Details" size="xl">
         {viewingListing && (
           <div className="space-y-5">
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <div className="h-36 w-full overflow-hidden rounded-2xl bg-gray-100 sm:w-44">
-                {viewingListing.photos?.[0] ? (
-                  <img src={resolveAssetUrl(viewingListing.photos[0])} alt={viewingListing.title} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-4xl">
-                    {CATEGORIES.find((item) => item.id === viewingListing.category)?.icon || '🔧'}
+            <div className="space-y-4">
+              <div className="relative overflow-hidden rounded-2xl border border-gray-100 bg-gray-50">
+                <div className="relative h-64 bg-white sm:h-80">
+                  {viewingPhotos[viewingImageIndex] ? (
+                    <img src={resolveAssetUrl(viewingPhotos[viewingImageIndex])} alt={`${viewingListing.title} ${viewingImageIndex + 1}`} className="h-full w-full object-contain p-3" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-5xl">
+                      {CATEGORIES.find((item) => item.id === viewingListing.category)?.icon || '🔧'}
+                    </div>
+                  )}
+
+                  {viewingPhotos.length > 0 && (
+                    <div className="absolute bottom-4 right-4 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white shadow">
+                      {viewingImageIndex + 1} / {viewingPhotos.length}
+                    </div>
+                  )}
+
+                  {hasMultipleViewingPhotos && (
+                    <>
+                      <button onClick={showPreviousViewingPhoto} className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg transition hover:bg-white">
+                        <FiChevronLeft size={18} />
+                      </button>
+                      <button onClick={showNextViewingPhoto} className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg transition hover:bg-white">
+                        <FiChevronRight size={18} />
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                {hasMultipleViewingPhotos && (
+                  <div className="flex gap-2 overflow-x-auto border-t border-gray-100 bg-white p-3 scrollbar-hide">
+                    {viewingPhotos.map((photo, index) => (
+                      <button key={`${photo}-${index}`} onClick={() => setViewingImageIndex(index)} className={`flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 bg-white transition-all ${viewingImageIndex === index ? 'border-primary-500 shadow-sm' : 'border-gray-200 hover:border-primary-200'}`}>
+                        <img src={resolveAssetUrl(photo)} alt={`Thumbnail ${index + 1}`} className="h-full w-full object-contain p-1.5" />
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="text-lg font-bold text-gray-900">{viewingListing.title}</h3>
-                  <StatusBadge status={viewingListing.status} />
-                  {viewingListing.isPremium && <span className="badge-premium flex items-center gap-1"><FaCrown size={10} /> Premium</span>}
-                </div>
-                <p className="mt-2 text-sm text-gray-500">Owned by {viewingListing.user?.name || 'Unknown'} • {viewingListing.user?.email || 'No email'}</p>
-                <p className="mt-2 text-sm font-semibold text-primary-700">{formatPrice(viewingListing.startingPrice)}</p>
-                <p className="mt-2 text-sm text-gray-600">{viewingListing.description}</p>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-lg font-bold text-gray-900">{viewingListing.title}</h3>
+                <StatusBadge status={viewingListing.status} />
+                {viewingListing.isPremium && <span className="badge-premium flex items-center gap-1"><FaCrown size={10} /> Premium</span>}
               </div>
+              <p className="text-sm text-gray-500">Owned by {viewingListing.user?.name || 'Unknown'} • {viewingListing.user?.email || 'No email'}</p>
+              <p className="text-sm font-semibold text-primary-700">{formatPrice(viewingListing.startingPrice)}</p>
+              <p className="text-sm text-gray-600">{viewingListing.description}</p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">

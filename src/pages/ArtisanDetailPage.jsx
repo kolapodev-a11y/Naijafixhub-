@@ -11,7 +11,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import toast from 'react-hot-toast'
-import { FiMapPin, FiShield, FiFlag, FiChevronLeft, FiSend, FiClock, FiStar, FiAlertTriangle } from 'react-icons/fi'
+import { FiMapPin, FiShield, FiFlag, FiChevronLeft, FiChevronRight, FiSend, FiClock, FiStar, FiAlertTriangle } from 'react-icons/fi'
 import { FaCrown, FaWhatsapp } from 'react-icons/fa'
 
 const reportSchema = z.object({
@@ -33,6 +33,8 @@ export default function ArtisanDetailPage() {
   const [reviewRating, setReviewRating] = useState(0)
   const category = CATEGORIES.find((c) => c.id === artisan?.category)
   const isOwnListing = artisan?.user?._id && user?._id && artisan.user._id === user._id
+  const totalPhotos = artisan?.photos?.length || 0
+  const hasMultiplePhotos = totalPhotos > 1
 
   useEffect(() => {
     Promise.all([artisanAPI.getById(id), artisanAPI.getReviews(id)])
@@ -44,8 +46,22 @@ export default function ArtisanDetailPage() {
       .finally(() => setLoading(false))
   }, [id, navigate])
 
+  useEffect(() => {
+    setActivePhoto(0)
+  }, [artisan?._id])
+
   const { register: regReport, handleSubmit: handleReport, reset: resetReport, formState: { errors: reportErrors } } = useForm({ resolver: zodResolver(reportSchema) })
   const { register: regReview, handleSubmit: handleReview, reset: resetReview, formState: { errors: reviewErrors } } = useForm()
+
+  const goToPrevPhoto = () => {
+    if (!hasMultiplePhotos) return
+    setActivePhoto((currentIndex) => (currentIndex === 0 ? totalPhotos - 1 : currentIndex - 1))
+  }
+
+  const goToNextPhoto = () => {
+    if (!hasMultiplePhotos) return
+    setActivePhoto((currentIndex) => (currentIndex === totalPhotos - 1 ? 0 : currentIndex + 1))
+  }
 
   const onReport = async (data) => {
     try {
@@ -95,16 +111,30 @@ export default function ArtisanDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {artisan.photos?.length > 0 && (
             <div className="card overflow-hidden">
-              <div className="relative h-72 sm:h-96">
-                <img src={resolveAssetUrl(artisan.photos[activePhoto])} alt={artisan.title} className="w-full h-full object-cover" />
-                {artisan.isPremium && <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-yellow-400 text-yellow-900 text-sm font-bold px-3 py-1.5 rounded-full shadow-lg"><FaCrown size={12} /> TOP ARTISAN</div>}
-                {artisan.status === 'approved' && <div className="absolute top-4 right-4 flex items-center gap-1 bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow"><FiShield size={12} /> Verified</div>}
+              <div className="relative h-80 bg-white sm:h-[28rem]">
+                <img src={resolveAssetUrl(artisan.photos[activePhoto])} alt={artisan.title} className="h-full w-full object-contain p-4" />
+                {artisan.isPremium && <div className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-yellow-400 px-3 py-1.5 text-sm font-bold text-yellow-900 shadow-lg"><FaCrown size={12} /> TOP ARTISAN</div>}
+                {artisan.status === 'approved' && <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-green-500 px-3 py-1.5 text-xs font-bold text-white shadow"><FiShield size={12} /> Verified</div>}
+                <div className="absolute bottom-4 right-4 rounded-full bg-black/70 px-3 py-1 text-xs font-semibold text-white shadow">
+                  {activePhoto + 1} / {totalPhotos}
+                </div>
+
+                {hasMultiplePhotos && (
+                  <>
+                    <button onClick={goToPrevPhoto} className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg transition hover:bg-white">
+                      <FiChevronLeft size={18} />
+                    </button>
+                    <button onClick={goToNextPhoto} className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg transition hover:bg-white">
+                      <FiChevronRight size={18} />
+                    </button>
+                  </>
+                )}
               </div>
-              {artisan.photos.length > 1 && (
-                <div className="flex gap-2 p-3 overflow-x-auto scrollbar-hide">
-                  {artisan.photos.map((photo, i) => (
-                    <button key={i} onClick={() => setActivePhoto(i)} className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${activePhoto === i ? 'border-primary-500' : 'border-gray-200'}`}>
-                      <img src={resolveAssetUrl(photo)} alt={`photo ${i + 1}`} className="w-full h-full object-cover" />
+              {hasMultiplePhotos && (
+                <div className="flex gap-2 overflow-x-auto p-3 scrollbar-hide">
+                  {artisan.photos.map((photo, index) => (
+                    <button key={photo + index} onClick={() => setActivePhoto(index)} className={`flex h-20 w-20 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border-2 bg-white transition-all ${activePhoto === index ? 'border-primary-500 shadow-sm' : 'border-gray-200 hover:border-primary-200'}`}>
+                      <img src={resolveAssetUrl(photo)} alt={`photo ${index + 1}`} className="h-full w-full object-contain p-1.5" />
                     </button>
                   ))}
                 </div>
