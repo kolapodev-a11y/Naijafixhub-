@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import HeroSection from '../components/home/HeroSection'
 import SmartMatchForm from '../components/home/SmartMatchForm'
@@ -8,32 +8,71 @@ import FeaturedArtisans from '../components/home/FeaturedArtisans'
 import ArtisanCard from '../components/artisan/ArtisanCard'
 import { SkeletonCard } from '../components/ui/LoadingSpinner'
 import { artisanAPI, paymentAPI } from '../utils/api'
+import { readCache, writeCache } from '../utils/cache'
 import { FiArrowRight, FiShield, FiZap } from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
 import { useAuth } from '../context/AuthContext'
 import toast from 'react-hot-toast'
 
+const HOME_FEED_TTL_MS = 5 * 60 * 1000
+const buildHomeFeedCacheKey = (selectedState) => `naijafixhub_home_feed:${selectedState || 'All States'}`
+
 export default function HomePage() {
   const navigate = useNavigate()
   const { isAuthenticated, canOfferServices, hasPremiumProvider } = useAuth()
   const [selectedState, setSelectedState] = useState('All States')
-  const [artisans, setArtisans] = useState([])
-  const [loading, setLoading] = useState(true)
+  const initialCache = useMemo(() => readCache(buildHomeFeedCacheKey('All States'), HOME_FEED_TTL_MS), [])
+  const [artisans, setArtisans] = useState(initialCache?.artisans || [])
+  const [featuredArtisans, setFeaturedArtisans] = useState(initialCache?.featuredArtisans || [])
+  const [loading, setLoading] = useState(!initialCache)
   const [premiumLoading, setPremiumLoading] = useState(false)
 
   useEffect(() => {
-    const params = { limit: 8, status: 'approved' }
-    if (selectedState !== 'All States') params.state = selectedState
-    artisanAPI
-      .getAll(params)
-      .then((r) => setArtisans(r.data.artisans || []))
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    let isMounted = true
+    const cacheKey = buildHomeFeedCacheKey(selectedState)
+    const cachedFeed = readCache(cacheKey, HOME_FEED_TTL_MS)
+
+    if (cachedFeed) {
+      setArtisans(cachedFeed.artisans || [])
+      setFeaturedArtisans(cachedFeed.featuredArtisans || [])
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
+
+    ;(async () => {
+      try {
+        const params = { limit: 8 }
+        if (selectedState !== 'All States') params.state = selectedState
+
+        const { data } = await artisanAPI.getHomeFeed(params)
+        if (!isMounted) return
+
+        const nextFeed = {
+          artisans: data.artisans || [],
+          featuredArtisans: data.featuredArtisans || [],
+        }
+
+        setArtisans(nextFeed.artisans)
+        setFeaturedArtisans(nextFeed.featuredArtisans)
+        writeCache(cacheKey, nextFeed)
+      } catch {
+        if (!cachedFeed && isMounted) {
+          setArtisans([])
+          setFeaturedArtisans([])
+        }
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    })()
+
+    return () => {
+      isMounted = false
+    }
   }, [selectedState])
 
-  const handleStateSelect = (s) => {
-    setSelectedState(s)
-    setLoading(true)
+  const handleStateSelect = (stateName) => {
+    setSelectedState(stateName)
   }
 
   const handlePremiumUpgrade = async () => {
@@ -106,23 +145,33 @@ export default function HomePage() {
             <SmartMatchForm />
           </div>
           <div className="lg:col-span-2">
-            <FeaturedArtisans />
+            <FeaturedArtisans artisans={featuredArtisans} loading={loading && featuredArtisans.length === 0} />
           </div>
         </section>
 
         <section className="mb-12">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="section-title">Artisans Near You</h2>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div>
+              <h2 className="section-title">Artisans Near You</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                {selectedState === 'All States'
+                  ? 'Fresh approved services are loaded immediately when the homepage opens.'
+                  : `Showing approved services in ${selectedState}.`}
+              </p>
+            </div>
             <Link to="/search" className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center gap-1">
               View all <FiArrowRight size={14} />
             </Link>
           </div>
+
           <div className="mb-5">
             <StateFilter selected={selectedState} onSelect={handleStateSelect} />
           </div>
 
-          {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">{[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}</div>
+          {loading && artisans.length === 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+            </div>
           ) : artisans.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-200">
               <p className="text-4xl mb-3">🔍</p>
@@ -131,7 +180,16 @@ export default function HomePage() {
               <Link to="/post-service" className="btn-primary inline-flex mt-4 text-sm">Offer Your Service</Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">{artisans.map((a) => <ArtisanCard key={a._id} artisan={a} />)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {artisans.map((artisan, index) => (
+                <ArtisanCard
+                  key={artisan._id}
+                  artisan={artisan}
+                  imageLoading={index < 4 ? 'eager' : 'lazy'}
+                  imageFetchPriority={index < 4 ? 'high' : 'auto'}
+                />
+              ))}
+            </div>
           )}
         </section>
 
