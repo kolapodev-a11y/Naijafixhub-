@@ -1,36 +1,44 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { FiMapPin, FiShield, FiStar, FiMessageCircle } from 'react-icons/fi'
+import { FiMapPin, FiShield, FiMessageCircle } from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
 import { StarDisplay } from '../ui/StarRating'
 import { formatPrice, truncate, generateWhatsAppLink, resolveAssetUrl, timeAgo } from '../../utils/helpers'
 import { CATEGORIES } from '../../utils/constants'
 
-export default function ArtisanCard({ artisan }) {
-  const category = CATEGORIES.find(c => c.id === artisan.category)
+export default function ArtisanCard({ artisan, imageLoading = 'lazy', imageFetchPriority = 'auto' }) {
+  const category = CATEGORIES.find((c) => c.id === artisan.category)
   const waLink = generateWhatsAppLink(
     artisan.whatsapp || artisan.phone || '',
-    `Hi, I found your profile on NaijaFixHub. Are you available for ${artisan.title}?`
+    `Hi, I found your profile on NaijaFixHub. Are you available for ${artisan.title}?`,
   )
 
   return (
     <div className="card overflow-hidden group hover:-translate-y-1 transition-all duration-300">
-      {/* Image */}
       <div className="relative h-44 sm:h-48 overflow-hidden bg-gradient-to-br from-primary-100 to-accent-100">
         {artisan.photos?.[0] ? (
           <img
             src={resolveAssetUrl(artisan.photos[0])}
             alt={artisan.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
+            loading={imageLoading}
+            fetchPriority={imageFetchPriority}
+            decoding="async"
+            onError={(event) => {
+              event.currentTarget.style.display = 'none'
+              const fallback = event.currentTarget.parentElement?.querySelector('[data-artisan-fallback]')
+              if (fallback) fallback.classList.remove('hidden')
+            }}
           />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-5xl">{category?.icon || '🔧'}</span>
-          </div>
-        )}
+        ) : null}
 
-        {/* Badges */}
+        <div
+          data-artisan-fallback
+          className={`w-full h-full items-center justify-center ${artisan.photos?.[0] ? 'hidden' : 'flex'}`}
+        >
+          <span className="text-5xl">{category?.icon || '🔧'}</span>
+        </div>
+
         <div className="absolute top-3 left-3 flex flex-col gap-1.5">
           {artisan.isPremium && (
             <span className="flex items-center gap-1 bg-yellow-400 text-yellow-900 text-xs font-bold px-2.5 py-1 rounded-full shadow">
@@ -44,7 +52,6 @@ export default function ArtisanCard({ artisan }) {
           )}
         </div>
 
-        {/* Category chip */}
         <div className="absolute top-3 right-3">
           <span
             className="text-xs font-semibold px-2.5 py-1 rounded-full text-white shadow"
@@ -55,7 +62,6 @@ export default function ArtisanCard({ artisan }) {
         </div>
       </div>
 
-      {/* Content */}
       <div className="p-4">
         <h3 className="font-bold text-gray-800 text-base leading-snug mb-1 line-clamp-1">
           {artisan.title}
@@ -75,7 +81,6 @@ export default function ArtisanCard({ artisan }) {
           </span>
         </div>
 
-        {/* Actions */}
         <div className="flex gap-2">
           <Link
             to={`/artisan/${artisan._id}`}
@@ -95,7 +100,6 @@ export default function ArtisanCard({ artisan }) {
         </div>
       </div>
 
-      {/* Footer */}
       <div className="px-4 py-2 border-t border-gray-50 text-xs text-gray-400">
         Listed {timeAgo(artisan.createdAt)}
       </div>
