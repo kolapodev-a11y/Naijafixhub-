@@ -43,6 +43,7 @@ export const authAPI = {
 }
 
 export const artisanAPI = {
+  getHomeFeed: (params) => api.get('/artisans/home-feed', { params }),
   getAll: (params) => api.get('/artisans', { params }),
   getById: (id) => api.get(`/artisans/${id}`),
   create: (data) =>
