@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AppProvider } from './context/AppContext'
 import Layout from './components/layout/Layout'
+import ScrollToTop from './components/layout/ScrollToTop'
 import { PageLoader } from './components/ui/LoadingSpinner'
 
 const HomePage = lazy(() => import('./pages/HomePage'))
@@ -138,6 +139,7 @@ export default function App() {
     <AuthProvider>
       <AppProvider>
         <Router>
+          <ScrollToTop />
           <AppRoutes />
           <Toaster
             position="top-right"
