@@ -15,12 +15,12 @@ export default function ArtisanCard({ artisan, imageLoading = 'lazy', imageFetch
 
   return (
     <div className="card overflow-hidden group hover:-translate-y-1 transition-all duration-300">
-      <div className="relative h-44 sm:h-48 overflow-hidden bg-gradient-to-br from-primary-100 to-accent-100">
+      <div className="relative h-52 sm:h-56 overflow-hidden bg-white">
         {artisan.photos?.[0] ? (
           <img
             src={resolveAssetUrl(artisan.photos[0])}
             alt={artisan.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="h-full w-full object-contain p-3 transition-transform duration-500 group-hover:scale-[1.03]"
             loading={imageLoading}
             fetchPriority={imageFetchPriority}
             decoding="async"
@@ -34,7 +34,7 @@ export default function ArtisanCard({ artisan, imageLoading = 'lazy', imageFetch
 
         <div
           data-artisan-fallback
-          className={`w-full h-full items-center justify-center ${artisan.photos?.[0] ? 'hidden' : 'flex'}`}
+          className={`h-full w-full items-center justify-center bg-gradient-to-br from-primary-100 to-accent-100 ${artisan.photos?.[0] ? 'hidden' : 'flex'}`}
         >
           <span className="text-5xl">{category?.icon || '🔧'}</span>
         </div>
@@ -52,13 +52,15 @@ export default function ArtisanCard({ artisan, imageLoading = 'lazy', imageFetch
           )}
         </div>
 
-        <div className="absolute top-3 right-3">
-          <span
-            className="text-xs font-semibold px-2.5 py-1 rounded-full text-white shadow"
-            style={{ backgroundColor: category?.color || '#7C3AED' }}
-          >
+        <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full text-white shadow" style={{ backgroundColor: category?.color || '#7C3AED' }}>
             {category?.name || artisan.category}
           </span>
+          {artisan.photos?.length > 1 && (
+            <span className="rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white shadow">
+              {artisan.photos.length} photos
+            </span>
+          )}
         </div>
       </div>
 
