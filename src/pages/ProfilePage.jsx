@@ -3,16 +3,33 @@ import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { useAuth } from '../context/AuthContext'
-import { authAPI, artisanAPI } from '../utils/api'
-import { getInitials, formatPrice, formatDate, resolveAssetUrl, timeAgo } from '../utils/helpers'
-import { CATEGORIES, NIGERIAN_STATES } from '../utils/constants'
+import { authAPI, artisanAPI, requestAPI } from '../utils/api'
+import { formatDate, formatPrice, getInitials, resolveAssetUrl, timeAgo } from '../utils/helpers'
+import { CATEGORIES, NIGERIAN_STATES, URGENCY_OPTIONS } from '../utils/constants'
 import Modal from '../components/ui/Modal'
-import { FiUser, FiMail, FiSave, FiLock, FiTrash2, FiEdit3, FiPhone, FiShield, FiBriefcase, FiLogOut, FiImage, FiUpload, FiX } from 'react-icons/fi'
+import {
+  FiBriefcase,
+  FiCheckCircle,
+  FiClock,
+  FiEdit3,
+  FiImage,
+  FiLock,
+  FiMail,
+  FiMapPin,
+  FiPauseCircle,
+  FiPhone,
+  FiSave,
+  FiShield,
+  FiTrash2,
+  FiUpload,
+  FiUser,
+  FiX,
+} from 'react-icons/fi'
 import { FaCrown } from 'react-icons/fa'
 
 const accountOptions = [
-  { value: 'customer', title: 'Customer', subtitle: 'Find artisans and post requests' },
-  { value: 'provider', title: 'Provider', subtitle: 'Offer services and manage listings' },
+  { value: 'customer', title: 'Customer', subtitle: 'Browse service listings and post requests for artisans' },
+  { value: 'provider', title: 'Provider', subtitle: 'Browse customer requests and manage service listings' },
   { value: 'both', title: 'Both', subtitle: 'Use customer and provider features together' },
 ]
 
@@ -29,16 +46,30 @@ const emptyServiceForm = {
   phone: '',
 }
 
+const requestStatusTone = {
+  open: 'bg-emerald-50 text-emerald-700',
+  fulfilled: 'bg-blue-50 text-blue-700',
+  expired: 'bg-gray-100 text-gray-600',
+}
+
+const serviceStatusTone = {
+  active: 'bg-emerald-50 text-emerald-700',
+  paused: 'bg-amber-50 text-amber-700',
+  completed: 'bg-blue-50 text-blue-700',
+}
+
 export default function ProfilePage() {
-  const { user, updateUser, logout, canOfferServices, hasPremiumProvider } = useAuth()
+  const { user, updateUser, logout, canOfferServices, canRequestServices, hasPremiumProvider, isAdmin } = useAuth()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [servicesLoading, setServicesLoading] = useState(false)
+  const [requestsLoading, setRequestsLoading] = useState(false)
+  const [serviceSaving, setServiceSaving] = useState(false)
   const [services, setServices] = useState([])
+  const [requests, setRequests] = useState([])
   const [editingService, setEditingService] = useState(null)
   const [serviceForm, setServiceForm] = useState(emptyServiceForm)
-  const [serviceSaving, setServiceSaving] = useState(false)
   const [existingServicePhotos, setExistingServicePhotos] = useState([])
   const [newServicePhotos, setNewServicePhotos] = useState([])
   const [servicePhotoError, setServicePhotoError] = useState('')
@@ -84,6 +115,19 @@ export default function ProfilePage() {
     }
   }
 
+  const loadRequests = async () => {
+    if (!user) return
+    setRequestsLoading(true)
+    try {
+      const { data } = await requestAPI.getMine()
+      setRequests(data.requests || [])
+    } catch {
+      setRequests([])
+    } finally {
+      setRequestsLoading(false)
+    }
+  }
+
   useEffect(() => {
     profileForm.reset({
       name: user?.name || '',
@@ -95,17 +139,52 @@ export default function ProfilePage() {
 
   useEffect(() => {
     loadServices()
+    loadRequests()
   }, [user])
 
   const accountType = profileForm.watch('accountType')
   const accountDescription = useMemo(() => accountOptions.find((option) => option.value === accountType)?.subtitle, [accountType])
+  const currentAccountDescription = useMemo(() => accountOptions.find((option) => option.value === user?.accountType)?.subtitle, [user?.accountType])
+  const showRequestsSection = canRequestServices || requests.length > 0 || isAdmin
+  const showServicesSection = canOfferServices || services.length > 0 || isAdmin
+
+  const buildRoleSwitchMessage = (nextAccountType) => {
+    const nextLabel = accountOptions.find((option) => option.value === nextAccountType)?.title || nextAccountType
+    const lines = [
+      `Switch account type to ${nextLabel}?`,
+      '',
+      'What changes:',
+      '• Customer: browse service listings and post requests.',
+      '• Provider: browse requests and manage service listings.',
+      '• Both: access both workflows.',
+    ]
+
+    if (services.length > 0) {
+      lines.push('', `• Your ${services.length} existing service listing(s) will stay saved in your account.`)
+    }
+    if (requests.length > 0) {
+      lines.push(`• Your ${requests.length} existing request(s) will remain in your account history.`)
+    }
+
+    lines.push('', 'You can change this again later.')
+    return lines.join('\n')
+  }
 
   const onProfileSubmit = async (values) => {
+    if (!isAdmin && values.accountType !== user?.accountType) {
+      const confirmed = window.confirm(buildRoleSwitchMessage(values.accountType))
+      if (!confirmed) return
+    }
+
     setLoading(true)
     try {
-      const res = await authAPI.updateProfile({ name: values.name, phone: values.phone, accountType: values.accountType })
+      const res = await authAPI.updateProfile({
+        name: values.name,
+        phone: values.phone,
+        accountType: values.accountType,
+      })
       updateUser(res.data.user)
-      toast.success('Profile updated!')
+      toast.success(values.accountType !== user?.accountType ? 'Account type updated successfully.' : 'Profile updated!')
     } catch (error) {
       toast.error(error.response?.data?.message || 'Update failed')
     } finally {
@@ -133,7 +212,7 @@ export default function ProfilePage() {
   }
 
   const handleDeleteAccount = async () => {
-    const confirmed = window.confirm('This will permanently delete your account and listings. Continue?')
+    const confirmed = window.confirm('This will permanently delete your account and all related listings/requests. Continue?')
     if (!confirmed) return
 
     try {
@@ -227,13 +306,27 @@ export default function ProfilePage() {
       existingServicePhotos.forEach((photo) => fd.append('retainedPhotos', photo))
       newServicePhotos.forEach(({ file }) => fd.append('photos', file))
       await artisanAPI.update(editingService._id, fd)
-      toast.success('Service updated with your photo changes and resubmitted for review')
+      toast.success('Service updated and resubmitted for review.')
       resetServiceEditor()
       loadServices()
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update service')
     } finally {
       setServiceSaving(false)
+    }
+  }
+
+  const updateServiceLifecycle = async (service, serviceStatus) => {
+    const actionLabel = serviceStatus === 'active' ? 'reactivate' : serviceStatus
+    const confirmed = window.confirm(`Are you sure you want to ${actionLabel} “${service.title}”?`)
+    if (!confirmed) return
+
+    try {
+      await artisanAPI.updateServiceStatus(service._id, serviceStatus)
+      toast.success(serviceStatus === 'active' ? 'Service reactivated.' : serviceStatus === 'completed' ? 'Service marked as completed.' : 'Service paused successfully.')
+      loadServices()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update service status')
     }
   }
 
@@ -250,53 +343,107 @@ export default function ProfilePage() {
     }
   }
 
+  const updateRequestStatus = async (request, status) => {
+    const actionText = status === 'fulfilled' ? 'mark this request as fulfilled' : status === 'expired' ? 'close this request as expired' : 'reopen this request'
+    const confirmed = window.confirm(`Are you sure you want to ${actionText}?`)
+    if (!confirmed) return
+
+    try {
+      await requestAPI.updateStatus(request._id, status)
+      toast.success(status === 'open' ? 'Request reopened.' : status === 'fulfilled' ? 'Request marked as fulfilled.' : 'Request marked as expired.')
+      loadRequests()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to update request status')
+    }
+  }
+
+  const deleteRequest = async (requestId) => {
+    const confirmed = window.confirm('Delete this request permanently?')
+    if (!confirmed) return
+
+    try {
+      await requestAPI.delete(requestId)
+      toast.success('Request deleted successfully.')
+      loadRequests()
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to delete request')
+    }
+  }
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
+    <div className="mx-auto max-w-6xl px-4 py-10">
       <div className="grid gap-6 lg:grid-cols-[320px,1fr]">
-        <div className="card p-6 h-fit">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-accent-500 rounded-2xl flex items-center justify-center text-white text-xl font-bold">{getInitials(user?.name)}</div>
+        <div className="card h-fit p-6">
+          <div className="mb-6 flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 text-xl font-bold text-white">
+              {getInitials(user?.name)}
+            </div>
             <div>
-              <p className="font-bold text-gray-800 text-lg">{user?.name}</p>
-              <p className="text-gray-500 text-sm">{user?.email}</p>
+              <p className="text-lg font-bold text-gray-800">{user?.name}</p>
+              <p className="text-sm text-gray-500">{user?.email}</p>
               <div className="mt-2 flex flex-wrap gap-2">
-                <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full ${user?.role === 'admin' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`}>{user?.role === 'admin' ? 'Admin' : 'Member'}</span>
-                <span className="inline-block text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 uppercase">{user?.accountType}</span>
-                {hasPremiumProvider && <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-semibold text-yellow-800"><FaCrown size={10} /> Premium</span>}
+                <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${isAdmin ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600'}`}>
+                  {isAdmin ? 'Admin' : 'Member'}
+                </span>
+                <span className="inline-block rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium uppercase text-emerald-700">
+                  {user?.accountType}
+                </span>
+                {hasPremiumProvider && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2.5 py-1 text-xs font-semibold text-yellow-800">
+                    <FaCrown size={10} /> {isAdmin ? 'Premium+' : 'Premium'}
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
           {hasPremiumProvider && (
             <div className="mb-6 rounded-2xl border border-yellow-200 bg-gradient-to-r from-yellow-50 to-orange-50 p-4 text-sm text-yellow-900">
-              <div className="flex items-center gap-2 font-semibold mb-1"><FaCrown className="text-yellow-500" /> Premium provider active</div>
-              <p>All your current and future listings receive premium placement automatically.</p>
-              {user?.premiumExpiresAt && <p className="mt-2 text-xs font-medium text-yellow-800">Active until {formatDate(user.premiumExpiresAt)}</p>}
+              <div className="mb-1 flex items-center gap-2 font-semibold">
+                <FaCrown className="text-yellow-500" />
+                {isAdmin ? 'Unlimited Premium+ admin access' : 'Premium provider active'}
+              </div>
+              <p>
+                {isAdmin
+                  ? 'This admin profile always has Premium+ visibility and marketplace privileges without expiry.'
+                  : 'All your current and future listings receive premium placement automatically while your plan is active.'}
+              </p>
+              {!isAdmin && user?.premiumExpiresAt && (
+                <p className="mt-2 text-xs font-medium text-yellow-800">Active until {formatDate(user.premiumExpiresAt)}</p>
+              )}
             </div>
           )}
 
-          <div className="space-y-3 text-sm text-gray-600">
-            <div className="flex items-center gap-2"><FiMail className="text-gray-400" /> {user?.email}</div>
-            <div className="flex items-center gap-2"><FiPhone className="text-gray-400" /> {user?.phone || 'No phone added yet'}</div>
-            <div className="flex items-center gap-2"><FiBriefcase className="text-gray-400" /> {accountDescription}</div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl bg-primary-50 p-3 text-center">
+              <p className="text-lg font-bold text-primary-700">{services.length}</p>
+              <p className="text-xs text-primary-700/80">Services</p>
+            </div>
+            <div className="rounded-2xl bg-blue-50 p-3 text-center">
+              <p className="text-lg font-bold text-blue-700">{requests.length}</p>
+              <p className="text-xs text-blue-700/80">Requests</p>
+            </div>
+            <div className="rounded-2xl bg-emerald-50 p-3 text-center">
+              <p className="text-sm font-bold uppercase text-emerald-700">{user?.accountType}</p>
+              <p className="text-xs text-emerald-700/80">Access</p>
+            </div>
           </div>
 
-          <button
-            onClick={() => {
-              const confirmed = window.confirm('Are you sure you want to log out?')
-              if (!confirmed) return
-              logout()
-              navigate('/')
-            }}
-            className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50"
-          >
-            <FiLogOut size={15} /> Log Out
-          </button>
+          <div className="mt-6 space-y-3 text-sm text-gray-600">
+            <div className="flex items-center gap-2"><FiMail className="text-gray-400" /> {user?.email}</div>
+            <div className="flex items-center gap-2"><FiPhone className="text-gray-400" /> {user?.phone || 'No phone added yet'}</div>
+            <div className="flex items-center gap-2"><FiBriefcase className="text-gray-400" /> {currentAccountDescription}</div>
+          </div>
+
+          <div className="mt-6 space-y-2">
+            {canRequestServices && <button onClick={() => navigate('/')} className="btn-outline w-full text-sm">Post a Customer Request</button>}
+            {canOfferServices && <button onClick={() => navigate('/post-service')} className="btn-primary w-full text-sm">Post a Service Listing</button>}
+          </div>
         </div>
 
         <div className="space-y-6">
           <div className="card p-6">
-            <div className="flex items-center gap-2 mb-4"><FiUser className="text-primary-600" /> <h2 className="text-lg font-bold text-gray-800">Profile information</h2></div>
+            <div className="mb-4 flex items-center gap-2"><FiUser className="text-primary-600" /> <h2 className="text-lg font-bold text-gray-800">Profile information</h2></div>
             <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
@@ -305,7 +452,7 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <label className="label">Email address</label>
-                  <input {...profileForm.register('email')} disabled className="input-field bg-gray-50 text-gray-400 cursor-not-allowed" />
+                  <input {...profileForm.register('email')} disabled className="input-field cursor-not-allowed bg-gray-50 text-gray-400" />
                 </div>
               </div>
 
@@ -314,97 +461,194 @@ export default function ProfilePage() {
                 <input {...profileForm.register('phone')} className="input-field" placeholder="08012345678" />
               </div>
 
-              {user?.role !== 'admin' && (
+              {!isAdmin && (
                 <div>
                   <label className="label">Account type</label>
                   <div className="grid gap-3 md:grid-cols-3">
                     {accountOptions.map((option) => (
-                      <button key={option.value} type="button" onClick={() => profileForm.setValue('accountType', option.value)} className={`rounded-2xl border p-4 text-left transition ${accountType === option.value ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-100' : 'border-gray-200 hover:border-primary-200'}`}>
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => profileForm.setValue('accountType', option.value)}
+                        className={`rounded-2xl border p-4 text-left transition ${accountType === option.value ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-100' : 'border-gray-200 hover:border-primary-200'}`}
+                      >
                         <p className="text-sm font-bold text-gray-800">{option.title}</p>
-                        <p className="mt-1 text-xs text-gray-500 leading-5">{option.subtitle}</p>
+                        <p className="mt-1 text-xs leading-5 text-gray-500">{option.subtitle}</p>
                       </button>
                     ))}
                   </div>
-                  <p className="mt-2 text-xs text-gray-500">You can switch this later if your needs change.</p>
+                  <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
+                    Customers browse services and post requests. Providers browse requests and manage services. Both accounts get both workflows. You will be asked to confirm before switching.
+                  </div>
                 </div>
               )}
 
-              <button type="submit" disabled={loading} className="btn-primary inline-flex items-center gap-2">{loading ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <FiSave size={15} />} Save Changes</button>
+              <button type="submit" disabled={loading} className="btn-primary inline-flex items-center gap-2">
+                {loading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> : <FiSave size={15} />} Save Changes
+              </button>
             </form>
           </div>
 
           <div className="card p-6">
-            <div className="flex items-center gap-2 mb-4"><FiLock className="text-primary-600" /> <h2 className="text-lg font-bold text-gray-800">Security</h2></div>
+            <div className="mb-4 flex items-center gap-2"><FiLock className="text-primary-600" /> <h2 className="text-lg font-bold text-gray-800">Security</h2></div>
             <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="grid gap-4 md:grid-cols-3">
               <input type="password" {...passwordForm.register('currentPassword')} className="input-field" placeholder="Current password" />
               <input type="password" {...passwordForm.register('newPassword')} className="input-field" placeholder="New password" />
               <input type="password" {...passwordForm.register('confirmPassword')} className="input-field" placeholder="Confirm new password" />
               <div className="md:col-span-3">
-                <button type="submit" disabled={passwordLoading} className="btn-outline inline-flex items-center gap-2">{passwordLoading ? <span className="w-4 h-4 border-2 border-primary-300 border-t-primary-600 rounded-full animate-spin" /> : <FiShield size={15} />} Update Password</button>
+                <button type="submit" disabled={passwordLoading} className="btn-outline inline-flex items-center gap-2">
+                  {passwordLoading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-300 border-t-primary-600" /> : <FiShield size={15} />} Update Password
+                </button>
               </div>
             </form>
           </div>
 
-          <div className="card p-6">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-lg font-bold text-gray-800">My services</h2>
-                <p className="text-sm text-gray-500">View, edit text, and manage listing photos professionally.</p>
+          {showRequestsSection && (
+            <div className="card p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">My requests</h2>
+                  <p className="text-sm text-gray-500">Track requests you posted and close them professionally when the job is done.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={loadRequests} className="btn-outline text-sm">Refresh</button>
+                  {canRequestServices && <button onClick={() => navigate('/')} className="btn-primary text-sm">Post Request</button>}
+                </div>
               </div>
-              {canOfferServices && <button onClick={loadServices} className="btn-outline text-sm">Refresh</button>}
-            </div>
 
-            {!canOfferServices ? (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">Switch your account type to Provider or Both if you want to create and manage service listings.</div>
-            ) : servicesLoading ? (
-              <p className="text-sm text-gray-500">Loading services…</p>
-            ) : services.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center">
-                <p className="text-sm text-gray-500">You have not posted any services yet.</p>
-                <button onClick={() => navigate('/post-service')} className="btn-primary mt-4">Post a Service</button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {services.map((service) => (
-                  <div key={service._id} className="rounded-2xl border border-gray-100 p-4">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                      <div className="flex flex-1 gap-4">
-                        <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl bg-primary-50 border border-primary-100">
-                          {service.photos?.[0] ? (
-                            <img src={resolveAssetUrl(service.photos[0])} alt={service.title} className="h-full w-full object-contain bg-white p-2" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-primary-500">
-                              <FiImage size={26} />
+              {requestsLoading ? (
+                <p className="text-sm text-gray-500">Loading requests…</p>
+              ) : requests.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center">
+                  <p className="text-sm text-gray-500">You have not posted any requests yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {requests.map((request) => {
+                    const category = CATEGORIES.find((item) => item.id === request.category)
+                    const urgencyLabel = URGENCY_OPTIONS.find((item) => item.value === request.urgency)?.label || request.urgency
+                    return (
+                      <div key={request._id} className="rounded-2xl border border-gray-100 p-4">
+                        <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="mb-2 flex flex-wrap items-center gap-2">
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${requestStatusTone[request.status] || 'bg-gray-100 text-gray-600'}`}>{request.status}</span>
+                              <span className="rounded-full bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700">{category ? `${category.icon} ${category.name}` : 'General request'}</span>
+                              <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">{urgencyLabel}</span>
                             </div>
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <h3 className="font-bold text-gray-800">{service.title}</h3>
-                            <span className={service.status === 'approved' ? 'badge-verified' : service.status === 'rejected' ? 'badge-rejected' : 'badge-pending'}>{service.status}</span>
-                            {service.isPremium && <span className="badge-premium inline-flex items-center gap-1"><FaCrown size={10} /> Premium</span>}
+                            <p className="text-sm leading-6 text-gray-700">{request.description}</p>
                           </div>
-                          <p className="text-sm text-gray-500">{CATEGORIES.find((item) => item.id === service.category)?.name || service.category} • {service.location}</p>
-                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">{service.description}</p>
-                          <p className="mt-2 text-sm font-semibold text-primary-700">{formatPrice(service.startingPrice)}</p>
-                          {service.rejectionReason && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">Rejection reason: {service.rejectionReason}</p>}
-                          <p className="mt-2 text-xs text-gray-400">Updated {timeAgo(service.updatedAt || service.createdAt)}</p>
+                          <span className="text-xs text-gray-400">{timeAgo(request.createdAt)}</span>
+                        </div>
+                        <div className="mb-4 flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1"><FiMapPin size={14} /> {request.location}</span>
+                          <span className="flex items-center gap-1"><FiPhone size={14} /> {request.whatsapp}</span>
+                          <span className="flex items-center gap-1"><FiClock size={14} /> Expires {formatDate(request.expiresAt)}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {request.status === 'open' ? (
+                            <>
+                              <button onClick={() => updateRequestStatus(request, 'fulfilled')} className="inline-flex items-center gap-2 rounded-xl border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
+                                <FiCheckCircle size={14} /> Mark Fulfilled
+                              </button>
+                              <button onClick={() => updateRequestStatus(request, 'expired')} className="inline-flex items-center gap-2 rounded-xl border border-amber-200 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50">
+                                <FiClock size={14} /> Close Request
+                              </button>
+                            </>
+                          ) : (
+                            <button onClick={() => updateRequestStatus(request, 'open')} className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50">
+                              <FiCheckCircle size={14} /> Reopen Request
+                            </button>
+                          )}
+                          <button onClick={() => deleteRequest(request._id)} className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50">
+                            <FiTrash2 size={14} /> Delete
+                          </button>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => openEditService(service)} className="btn-outline inline-flex items-center gap-2 text-sm"><FiEdit3 size={14} /> Edit</button>
-                        <button onClick={() => deleteService(service._id)} className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"><FiTrash2 size={14} /> Delete</button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {showServicesSection && (
+            <div className="card p-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-800">My services</h2>
+                  <p className="text-sm text-gray-500">Manage service listings, pause availability, or mark work as completed professionally.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={loadServices} className="btn-outline text-sm">Refresh</button>
+                  {canOfferServices && <button onClick={() => navigate('/post-service')} className="btn-primary text-sm">Post Service</button>}
+                </div>
+              </div>
+
+              {!canOfferServices && services.length > 0 && (
+                <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  Your current account type no longer opens the provider workflow by default, but your existing services remain available here for management.
+                </div>
+              )}
+
+              {servicesLoading ? (
+                <p className="text-sm text-gray-500">Loading services…</p>
+              ) : services.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-200 p-6 text-center">
+                  <p className="text-sm text-gray-500">You have not posted any services yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {services.map((service) => (
+                    <div key={service._id} className="rounded-2xl border border-gray-100 p-4">
+                      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                        <div className="flex flex-1 gap-4">
+                          <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl border border-primary-100 bg-primary-50">
+                            {service.photos?.[0] ? (
+                              <img src={resolveAssetUrl(service.photos[0])} alt={service.title} className="h-full w-full bg-white p-2 object-contain" />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-primary-500">
+                                <FiImage size={26} />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="mb-1 flex flex-wrap items-center gap-2">
+                              <h3 className="font-bold text-gray-800">{service.title}</h3>
+                              <span className={service.status === 'approved' ? 'badge-verified' : service.status === 'rejected' ? 'badge-rejected' : 'badge-pending'}>{service.status}</span>
+                              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${serviceStatusTone[service.serviceStatus || 'active'] || 'bg-gray-100 text-gray-600'}`}>{service.serviceStatus || 'active'}</span>
+                              {service.isPremium && <span className="badge-premium inline-flex items-center gap-1"><FaCrown size={10} /> Premium</span>}
+                            </div>
+                            <p className="text-sm text-gray-500">{CATEGORIES.find((item) => item.id === service.category)?.name || service.category} • {service.location}</p>
+                            <p className="mt-2 line-clamp-2 text-sm text-gray-600">{service.description}</p>
+                            <p className="mt-2 text-sm font-semibold text-primary-700">{formatPrice(service.startingPrice)}</p>
+                            {service.rejectionReason && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700">Rejection reason: {service.rejectionReason}</p>}
+                            <p className="mt-2 text-xs text-gray-400">Updated {timeAgo(service.updatedAt || service.createdAt)}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2 md:max-w-[220px] md:flex-col">
+                          <button onClick={() => openEditService(service)} className="btn-outline inline-flex items-center gap-2 text-sm"><FiEdit3 size={14} /> Edit</button>
+                          {service.serviceStatus !== 'completed' && (
+                            <button onClick={() => updateServiceLifecycle(service, 'completed')} className="inline-flex items-center gap-2 rounded-xl border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"><FiCheckCircle size={14} /> Mark Complete</button>
+                          )}
+                          {service.serviceStatus === 'active' ? (
+                            <button onClick={() => updateServiceLifecycle(service, 'paused')} className="inline-flex items-center gap-2 rounded-xl border border-amber-200 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50"><FiPauseCircle size={14} /> Pause</button>
+                          ) : (
+                            <button onClick={() => updateServiceLifecycle(service, 'active')} className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 px-4 py-2 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"><FiCheckCircle size={14} /> Reactivate</button>
+                          )}
+                          <button onClick={() => deleteService(service._id)} className="inline-flex items-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"><FiTrash2 size={14} /> Delete</button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-          <div className="card p-6 border border-red-100">
-            <h2 className="text-lg font-bold text-gray-800 mb-2">Danger zone</h2>
-            <p className="text-sm text-gray-500 mb-4">Delete your account and all related data permanently.</p>
+          <div className="card border border-red-100 p-6">
+            <h2 className="mb-2 text-lg font-bold text-gray-800">Danger zone</h2>
+            <p className="mb-4 text-sm text-gray-500">Delete your account and all related data permanently.</p>
             <button onClick={handleDeleteAccount} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white hover:bg-red-700"><FiTrash2 size={15} /> Delete Account</button>
           </div>
         </div>
@@ -427,7 +671,7 @@ export default function ProfilePage() {
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
                 {existingServicePhotos.map((photo, index) => (
                   <div key={photo} className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white">
-                    <img src={resolveAssetUrl(photo)} alt={`Existing service ${index + 1}`} className="h-28 w-full object-contain bg-white p-2" />
+                    <img src={resolveAssetUrl(photo)} alt={`Existing service ${index + 1}`} className="h-28 w-full bg-white p-2 object-contain" />
                     {index === 0 && <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">Cover</span>}
                     <button type="button" onClick={() => removeExistingServicePhoto(photo)} className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-red-600 shadow hover:bg-white">
                       <FiX size={14} />
@@ -436,7 +680,7 @@ export default function ProfilePage() {
                 ))}
                 {newServicePhotos.map((photo, index) => (
                   <div key={photo.preview} className="relative overflow-hidden rounded-2xl border border-primary-200 bg-primary-50">
-                    <img src={photo.preview} alt={`New service ${index + 1}`} className="h-28 w-full object-contain bg-white p-2" />
+                    <img src={photo.preview} alt={`New service ${index + 1}`} className="h-28 w-full bg-white p-2 object-contain" />
                     <span className="absolute left-2 top-2 rounded-full bg-primary-700 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white">New</span>
                     <button type="button" onClick={() => removeNewServicePhoto(index)} className="absolute right-2 top-2 rounded-full bg-white/90 p-1.5 text-red-600 shadow hover:bg-white">
                       <FiX size={14} />
@@ -504,8 +748,8 @@ export default function ProfilePage() {
           </div>
           <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">Editing a listing will resubmit it for admin review, including your picture updates.</div>
           <div className="flex gap-3">
-            <button onClick={resetServiceEditor} className="flex-1 btn-ghost border border-gray-200">Cancel</button>
-            <button onClick={saveService} disabled={serviceSaving} className="flex-1 btn-primary">{serviceSaving ? 'Saving...' : 'Save Service'}</button>
+            <button onClick={resetServiceEditor} className="btn-ghost flex-1 border border-gray-200">Cancel</button>
+            <button onClick={saveService} disabled={serviceSaving} className="btn-primary flex-1">{serviceSaving ? 'Saving...' : 'Save Service'}</button>
           </div>
         </div>
       </Modal>
