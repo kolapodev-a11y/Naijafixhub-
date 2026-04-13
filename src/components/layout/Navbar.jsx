@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useApp } from '../../context/AppContext'
 import { getInitials } from '../../utils/helpers'
 import NotificationBell from './NotificationBell'
+import Modal from '../ui/Modal'
 import { FiMenu, FiX, FiSearch, FiUser, FiLogOut, FiSettings, FiPlusCircle, FiShield } from 'react-icons/fi'
 
 export default function Navbar() {
@@ -12,6 +13,7 @@ export default function Navbar() {
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const dropRef = useRef(null)
 
   useEffect(() => {
@@ -25,8 +27,14 @@ export default function Navbar() {
   }, [])
 
   const handleLogout = () => {
-    logout()
     setDropdownOpen(false)
+    setMenuOpen(false)
+    setShowLogoutConfirm(true)
+  }
+
+  const confirmLogout = () => {
+    logout()
+    setShowLogoutConfirm(false)
     navigate('/')
   }
 
@@ -126,6 +134,11 @@ export default function Navbar() {
               <FiShield size={14} /> Admin Dashboard {pendingCount > 0 && <span className="bg-red-500 text-white text-xs rounded-full px-1.5">{pendingCount}</span>}
             </NavLink>
           )}
+          {isAuthenticated && (
+            <button onClick={handleLogout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50">
+              <FiLogOut size={15} /> Sign Out
+            </button>
+          )}
           {!isAuthenticated && (
             <div className="flex gap-2 pt-2">
               <Link to="/login" onClick={() => setMenuOpen(false)} className="btn-outline text-sm flex-1 text-center py-2">Sign In</Link>
@@ -134,6 +147,16 @@ export default function Navbar() {
           )}
         </div>
       )}
+
+      <Modal isOpen={showLogoutConfirm} onClose={() => setShowLogoutConfirm(false)} title="Confirm logout" size="sm">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">Are you sure you want to sign out of your NaijaFixHub account?</p>
+          <div className="flex gap-3">
+            <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 btn-ghost border border-gray-200">Cancel</button>
+            <button onClick={confirmLogout} className="flex-1 btn-danger">Yes, sign out</button>
+          </div>
+        </div>
+      </Modal>
     </nav>
   )
 }

@@ -1,12 +1,25 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { FiMail, FiPhone, FiGlobe, FiHeart } from 'react-icons/fi'
+import { FiMail, FiGlobe, FiHeart } from 'react-icons/fi'
 import { FaWhatsapp, FaTwitter, FaFacebook, FaInstagram } from 'react-icons/fa'
+import { CATEGORIES } from '../../utils/constants'
+
+const TOP_CATEGORY_IDS = [
+  'plumbers',
+  'electricians',
+  'ac-fridge-repair',
+  'tailors-fashion',
+  'house-cleaning',
+  'software-developer',
+]
 
 export default function Footer() {
+  const topCategories = TOP_CATEGORY_IDS
+    .map((categoryId) => CATEGORIES.find((category) => category.id === categoryId))
+    .filter(Boolean)
+
   return (
     <footer className="bg-gray-900 text-gray-300 mt-auto">
-      {/* Safety disclaimer banner */}
       <div className="bg-amber-500/10 border-t border-amber-500/30 px-4 py-4">
         <div className="max-w-7xl mx-auto">
           <p className="text-center text-amber-200 text-sm font-medium">
@@ -18,7 +31,6 @@ export default function Footer() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Brand */}
           <div className="lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
@@ -45,7 +57,6 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Quick Links */}
           <div>
             <h3 className="text-white font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2.5">
@@ -55,44 +66,36 @@ export default function Footer() {
                 { to: '/post-service', label: 'Offer a Service' },
                 { to: '/request', label: 'Post a Job Request' },
                 { to: '/register', label: 'Join as Artisan' },
-              ].map(l => (
-                <li key={l.to}>
-                  <Link to={l.to} className="text-gray-400 hover:text-primary-300 text-sm transition-colors">
-                    {l.label}
+              ].map((linkItem) => (
+                <li key={linkItem.to}>
+                  <Link to={linkItem.to} className="text-gray-400 hover:text-primary-300 text-sm transition-colors">
+                    {linkItem.label}
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Categories */}
           <div>
             <h3 className="text-white font-semibold mb-4">Top Categories</h3>
             <ul className="space-y-2.5">
-              {[
-                'Plumbers', 'Electricians', 'AC & Fridge Repair',
-                'Tailors & Fashion', 'House Cleaning', 'Software Developers'
-              ].map(c => (
-                <li key={c}>
-                  <Link to={`/search?category=${c.toLowerCase()}`}
-                    className="text-gray-400 hover:text-primary-300 text-sm transition-colors">
-                    {c}
+              {topCategories.map((category) => (
+                <li key={category.id}>
+                  <Link to={`/search?category=${category.id}`} className="text-gray-400 hover:text-primary-300 text-sm transition-colors">
+                    {category.name}
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Contact & Safety */}
           <div>
             <h3 className="text-white font-semibold mb-4">Safety & Contact</h3>
             <div className="space-y-3 mb-5">
-              <a href="mailto:peezutech@gmail.com"
-                className="flex items-center gap-2 text-gray-400 hover:text-primary-300 text-sm transition-colors">
+              <a href="mailto:peezutech@gmail.com" className="flex items-center gap-2 text-gray-400 hover:text-primary-300 text-sm transition-colors">
                 <FiMail size={14} /> peezutech@gmail.com
               </a>
-              <a href="https://peezutech.name.ng" target="_blank" rel="noreferrer"
-                className="flex items-center gap-2 text-gray-400 hover:text-primary-300 text-sm transition-colors">
+              <a href="https://peezutech.name.ng" target="_blank" rel="noreferrer" className="flex items-center gap-2 text-gray-400 hover:text-primary-300 text-sm transition-colors">
                 <FiGlobe size={14} /> peezutech.name.ng
               </a>
             </div>
@@ -111,8 +114,7 @@ export default function Footer() {
         <div className="border-t border-gray-800 mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-gray-500 text-sm">
             © {new Date().getFullYear()} NaijaFixHub. Built with <FiHeart className="inline text-red-500" size={12} /> by{' '}
-            <a href="https://peezutech.name.ng" target="_blank" rel="noreferrer"
-              className="text-primary-400 hover:text-primary-300 transition-colors font-medium">
+            <a href="https://peezutech.name.ng" target="_blank" rel="noreferrer" className="text-primary-400 hover:text-primary-300 transition-colors font-medium">
               PeezuTech
             </a>
           </p>
