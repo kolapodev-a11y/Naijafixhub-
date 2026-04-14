@@ -12,6 +12,7 @@ const SearchPage = lazy(() => import('./pages/SearchPage'))
 const RequestsPage = lazy(() => import('./pages/RequestsPage'))
 const ArtisanDetailPage = lazy(() => import('./pages/ArtisanDetailPage'))
 const PostServicePage = lazy(() => import('./pages/PostServicePage'))
+const PostRequestPage = lazy(() => import('./pages/PostRequestPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'))
@@ -81,6 +82,7 @@ function AppRoutes() {
         <Route path="/requests" element={<Layout><RequestsPage /></Layout>} />
         <Route path="/artisan/:id" element={<Layout><ArtisanDetailPage /></Layout>} />
         <Route path="/post-service" element={<Layout><PostServicePage /></Layout>} />
+        <Route path="/post-request" element={<Layout><PostRequestPage /></Layout>} />
         <Route path="/login" element={<Layout noFooter><LoginPage /></Layout>} />
         <Route path="/register" element={<Layout noFooter><RegisterPage /></Layout>} />
         <Route path="/payment/verify" element={<Layout><PaymentCallbackPage /></Layout>} />
