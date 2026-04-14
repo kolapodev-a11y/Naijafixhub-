@@ -104,9 +104,11 @@ export const resolveAssetUrl = (assetUrl) => {
 
     try {
       const parsed = new URL(value)
-      if (LOCAL_HOSTS.has(parsed.hostname)) {
-        const backendBaseUrl = getBackendAssetBaseUrl()
-        return `${backendBaseUrl}${parsed.pathname}${parsed.search}${parsed.hash}`
+      const backendBaseUrl = getBackendAssetBaseUrl()
+      const normalizedUploadsPath = parsed.pathname.replace(/^\/api(?=\/uploads\/)/, '')
+
+      if (LOCAL_HOSTS.has(parsed.hostname) || /\/uploads\//.test(parsed.pathname)) {
+        return `${backendBaseUrl}${normalizedUploadsPath}${parsed.search}${parsed.hash}`
       }
     } catch {
       return value
