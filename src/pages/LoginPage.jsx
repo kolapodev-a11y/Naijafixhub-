@@ -12,9 +12,8 @@ const schema = z.object({
   password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 
-const getDestination = (redirect, user) => {
+const getDestination = (redirect) => {
   if (redirect) return redirect
-  if (user?.role === 'artisan') return '/post-service'
   return '/'
 }
 
@@ -33,7 +32,7 @@ export default function LoginPage() {
     try {
       const user = await login({ email: values.email, password: values.password })
       toast.success(`Welcome back${user?.name ? `, ${user.name}` : ''}!`)
-      navigate(getDestination(redirect, user), { replace: true })
+      navigate(getDestination(redirect), { replace: true })
     } catch (err) {
       toast.error(err.response?.data?.message || 'Login failed. Please check your credentials.')
     }
@@ -41,9 +40,9 @@ export default function LoginPage() {
 
   async function handleGoogleLogin({ accessToken }) {
     try {
-      const user = await googleLogin({ accessToken, mode: 'login' })
+      await googleLogin({ accessToken, mode: 'login' })
       toast.success('Google login successful!')
-      navigate(getDestination(redirect, user), { replace: true })
+      navigate(getDestination(redirect), { replace: true })
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Google login failed. Please try again.')
     }

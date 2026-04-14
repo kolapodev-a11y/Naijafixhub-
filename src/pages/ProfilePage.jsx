@@ -439,7 +439,7 @@ export default function ProfilePage() {
           </div>
 
           <div className="mt-6 space-y-2">
-            {canRequestServices && <button onClick={() => navigate('/')} className="btn-outline w-full text-sm">Post a Customer Request</button>}
+            {canRequestServices && <button onClick={() => navigate('/post-request')} className="btn-outline w-full text-sm">Post a Customer Request</button>}
             {canOfferServices && <button onClick={() => navigate('/post-service')} className="btn-primary w-full text-sm">Post a Service Listing</button>}
           </div>
         </div>
@@ -515,7 +515,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex gap-2">
                   <button onClick={loadRequests} className="btn-outline text-sm">Refresh</button>
-                  {canRequestServices && <button onClick={() => navigate('/')} className="btn-primary text-sm">Post Request</button>}
+                  {canRequestServices && <button onClick={() => navigate('/post-request')} className="btn-primary text-sm">Post Request</button>}
                 </div>
               </div>
 
@@ -608,12 +608,23 @@ export default function ProfilePage() {
                         <div className="flex flex-1 gap-4">
                           <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl border border-primary-100 bg-primary-50">
                             {service.photos?.[0] ? (
-                              <img src={resolveAssetUrl(service.photos[0])} alt={service.title} className="h-full w-full bg-white p-2 object-contain" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-primary-500">
-                                <FiImage size={26} />
-                              </div>
-                            )}
+                              <img
+                                src={resolveAssetUrl(service.photos[0])}
+                                alt={service.title}
+                                className="h-full w-full bg-white p-2 object-contain"
+                                onError={(event) => {
+                                  event.currentTarget.style.display = 'none'
+                                  const fallback = event.currentTarget.parentElement?.querySelector('[data-service-fallback]')
+                                  if (fallback) fallback.classList.remove('hidden')
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              data-service-fallback
+                              className={`h-full w-full items-center justify-center text-primary-500 ${service.photos?.[0] ? 'hidden' : 'flex'}`}
+                            >
+                              <FiImage size={26} />
+                            </div>
                           </div>
                           <div className="flex-1">
                             <div className="mb-1 flex flex-wrap items-center gap-2">

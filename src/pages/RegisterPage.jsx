@@ -73,7 +73,8 @@ export default function RegisterPage() {
 
   const getDestination = (accountType) => {
     if (redirect) return redirect
-    return ['provider', 'both'].includes(accountType) ? '/post-service' : '/'
+    if (accountType === 'provider') return '/post-service'
+    return '/'
   }
 
   async function onSubmit(values) {
