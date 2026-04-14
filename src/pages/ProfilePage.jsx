@@ -262,15 +262,18 @@ export default function ProfilePage() {
       return
     }
 
-    const totalPhotos = existingServicePhotos.length + newServicePhotos.length + files.length
-    if (totalPhotos > 5) {
-      setServicePhotoError('Maximum 5 photos allowed per service.')
+    const currentPhotoCount = existingServicePhotos.length + newServicePhotos.length
+    const remainingSlots = Math.max(5 - currentPhotoCount, 0)
+
+    if (remainingSlots === 0) {
+      setServicePhotoError('You already have 5 photos. Remove one before adding another.')
       event.target.value = ''
       return
     }
 
-    setServicePhotoError('')
-    const preparedFiles = files.map((file) => ({ file, preview: URL.createObjectURL(file) }))
+    const acceptedFiles = files.slice(0, remainingSlots)
+    setServicePhotoError(files.length > remainingSlots ? `Only ${remainingSlots} more photo${remainingSlots === 1 ? '' : 's'} can be added. Extra files were ignored.` : '')
+    const preparedFiles = acceptedFiles.map((file) => ({ file, preview: URL.createObjectURL(file) }))
     setNewServicePhotos((prev) => [...prev, ...preparedFiles])
     event.target.value = ''
   }
@@ -660,7 +663,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <label className="label">Listing photos</label>
-                <p className="text-xs text-gray-500">Remove old photos, upload new ones, and keep up to 5 photos. The first photo becomes the cover image.</p>
+                <p className="text-xs text-gray-500">Remove old photos, upload new ones, and keep up to 5 photos. The first photo becomes the cover image. You currently have {existingServicePhotos.length + newServicePhotos.length}/5.</p>
               </div>
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-primary-200 px-4 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-50">
                 <FiUpload size={14} /> Add photos

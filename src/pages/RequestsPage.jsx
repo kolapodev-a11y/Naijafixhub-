@@ -4,7 +4,7 @@ import toast from 'react-hot-toast'
 import { FiAlertTriangle, FiClock, FiMapPin, FiMessageSquare, FiPhone, FiSearch } from 'react-icons/fi'
 import { FaWhatsapp } from 'react-icons/fa'
 import { requestAPI } from '../utils/api'
-import { CATEGORIES, URGENCY_OPTIONS } from '../utils/constants'
+import { CATEGORIES, NIGERIAN_STATES, URGENCY_OPTIONS } from '../utils/constants'
 import { generateCallLink, generateSmsLink, generateWhatsAppLink, timeAgo } from '../utils/helpers'
 import { useAuth } from '../context/AuthContext'
 
@@ -18,6 +18,7 @@ export default function RequestsPage() {
   const [total, setTotal] = useState(0)
   const [query, setQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [selectedState, setSelectedState] = useState('')
 
   const fetchRequests = async () => {
     if (!isAuthenticated || !canOfferServices) {
@@ -32,6 +33,7 @@ export default function RequestsPage() {
         limit: LIMIT,
         q: query || undefined,
         category: selectedCategory || undefined,
+        state: selectedState || undefined,
       })
       setRequests(data.requests || [])
       setTotal(data.total || 0)
@@ -46,7 +48,7 @@ export default function RequestsPage() {
 
   useEffect(() => {
     fetchRequests()
-  }, [isAuthenticated, canOfferServices, page, query, selectedCategory])
+  }, [isAuthenticated, canOfferServices, page, query, selectedCategory, selectedState])
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / LIMIT)), [total])
 
@@ -99,7 +101,7 @@ export default function RequestsPage() {
         </div>
       </div>
 
-      <div className="mb-6 grid gap-3 rounded-3xl bg-white p-4 shadow-card md:grid-cols-[1fr,220px]">
+      <div className="mb-6 grid gap-3 rounded-3xl bg-white p-4 shadow-card md:grid-cols-[1fr,220px,220px]">
         <div className="flex items-center gap-2 rounded-2xl border border-gray-200 px-4 py-3">
           <FiSearch className="text-gray-400" size={18} />
           <input
@@ -123,6 +125,19 @@ export default function RequestsPage() {
           <option value="">All categories</option>
           {CATEGORIES.map((category) => (
             <option key={category.id} value={category.id}>{category.icon} {category.name}</option>
+          ))}
+        </select>
+        <select
+          value={selectedState}
+          onChange={(event) => {
+            setPage(1)
+            setSelectedState(event.target.value)
+          }}
+          className="input-field"
+        >
+          <option value="">All states</option>
+          {NIGERIAN_STATES.filter((stateName) => stateName !== 'All States').map((stateName) => (
+            <option key={stateName} value={stateName}>{stateName}</option>
           ))}
         </select>
       </div>
@@ -161,7 +176,10 @@ export default function RequestsPage() {
                         <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">{urgencyLabel}</span>
                       </div>
                       <p className="text-sm font-semibold text-gray-800">{request.user?.name || 'Customer'}</p>
-                      <p className="mt-1 flex items-center gap-1 text-xs text-gray-500"><FiMapPin size={12} /> {request.location}</p>
+                      <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
+                        <FiMapPin size={12} />
+                        {[request.streetArea, request.location, request.state].filter(Boolean).join(', ')}
+                      </p>
                     </div>
                     <span className="flex items-center gap-1 text-xs text-gray-400"><FiClock size={12} /> {timeAgo(request.createdAt)}</span>
                   </div>

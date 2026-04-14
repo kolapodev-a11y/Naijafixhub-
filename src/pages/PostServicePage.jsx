@@ -81,12 +81,18 @@ export default function PostServicePage() {
 
   const handlePhotoChange = (e) => {
     const files = Array.from(e.target.files)
-    if (files.length + photos.length > 5) {
-      setPhotoError('Maximum 5 photos allowed')
+    const remainingSlots = Math.max(5 - photos.length, 0)
+
+    if (remainingSlots === 0) {
+      setPhotoError('You already selected 5 photos. Remove one before adding another.')
+      e.target.value = ''
       return
     }
-    setPhotoError('')
-    setPhotos((prev) => [...prev, ...files])
+
+    const acceptedFiles = files.slice(0, remainingSlots)
+    setPhotoError(files.length > remainingSlots ? `Only ${remainingSlots} more photo${remainingSlots === 1 ? '' : 's'} can be added. Extra files were ignored.` : '')
+    setPhotos((prev) => [...prev, ...acceptedFiles])
+    e.target.value = ''
   }
 
   const removePhoto = (idx) => setPhotos((prev) => prev.filter((_, i) => i !== idx))
@@ -316,7 +322,7 @@ export default function PostServicePage() {
               <label htmlFor="photo-upload" className="cursor-pointer">
                 <FiUpload size={24} className="mx-auto text-gray-400 mb-2" />
                 <p className="text-sm text-gray-500">Click to upload photos (JPG, PNG, WebP)</p>
-                <p className="text-xs text-gray-400 mt-1">Show before/after, tools, completed works</p>
+                <p className="text-xs text-gray-400 mt-1">Show before/after, tools, completed works • {photos.length}/5 selected</p>
               </label>
             </div>
             {photoError && <p className="text-red-500 text-xs mt-1">{photoError}</p>}

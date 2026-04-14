@@ -205,7 +205,7 @@ export default function ArtisanDetailPage() {
         </div>
 
         <div className="space-y-5">
-          <div className="card sticky top-20 p-5">
+          <div className="card p-5 lg:sticky lg:top-20">
             <h3 className="mb-4 font-bold text-gray-800">Contact This Provider</h3>
             <div className="grid gap-3">
               <a href={waLink} target="_blank" rel="noreferrer" className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-500 py-3.5 text-sm font-bold text-white transition-colors hover:bg-green-600"><FaWhatsapp size={18} /> Chat on WhatsApp</a>
