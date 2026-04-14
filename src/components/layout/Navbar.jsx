@@ -61,7 +61,7 @@ export default function Navbar() {
             <NavLink to="/" end className={navLinkClass}>Home</NavLink>
             {showBrowseServices && <NavLink to="/search" className={navLinkClass}>Browse Services</NavLink>}
             {showBrowseRequests && <NavLink to="/requests" className={navLinkClass}>Browse Requests</NavLink>}
-            {showPostRequest && <NavLink to="/" className={navLinkClass}>Post Request</NavLink>}
+            {showPostRequest && <NavLink to="/post-request" className={navLinkClass}>Post Request</NavLink>}
             {showOfferService && <NavLink to="/post-service" className={navLinkClass}>Offer a Service</NavLink>}
             {isAdmin && (
               <NavLink to="/admin" className={({ isActive }) => `flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-purple-100 text-primary-700' : 'text-primary-600 hover:bg-purple-100'}`}>
@@ -137,7 +137,7 @@ export default function Navbar() {
           <NavLink to="/" end onClick={() => setMenuOpen(false)} className={({ isActive }) => `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-700'}`}><span className="inline-flex items-center gap-2"><FiHome size={15} /> Home</span></NavLink>
           {showBrowseServices && <NavLink to="/search" onClick={() => setMenuOpen(false)} className={({ isActive }) => `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-700'}`}>Browse Services</NavLink>}
           {showBrowseRequests && <NavLink to="/requests" onClick={() => setMenuOpen(false)} className={({ isActive }) => `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-700'}`}>Browse Requests</NavLink>}
-          {showPostRequest && <NavLink to="/" onClick={() => setMenuOpen(false)} className={({ isActive }) => `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-700'}`}>Post Request</NavLink>}
+          {showPostRequest && <NavLink to="/post-request" onClick={() => setMenuOpen(false)} className={({ isActive }) => `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-700'}`}>Post Request</NavLink>}
           {showOfferService && <NavLink to="/post-service" onClick={() => setMenuOpen(false)} className={({ isActive }) => `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-700'}`}>Offer a Service</NavLink>}
           {isAuthenticated && <NavLink to="/profile" onClick={() => setMenuOpen(false)} className={({ isActive }) => `block rounded-lg px-3 py-2 text-sm font-medium ${isActive ? 'bg-primary-50 text-primary-700' : 'text-gray-700'}`}>My Profile</NavLink>}
           {isAdmin && (
