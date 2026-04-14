@@ -37,7 +37,7 @@ export default function SmartMatchForm() {
   const onSubmit = async (data) => {
     if (!isAuthenticated) {
       toast.error('Please sign in before posting a request.')
-      navigate('/login?redirect=/')
+      navigate('/login?redirect=/post-request')
       return
     }
 
@@ -86,8 +86,8 @@ export default function SmartMatchForm() {
             <p className="mt-2 text-sm text-gray-500">To reduce spam and protect artisans, only logged-in users can post service requests.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Link to="/login?redirect=/" className="btn-primary text-center">Sign In</Link>
-            <Link to="/register?redirect=/" className="btn-outline text-center">Create Account</Link>
+            <Link to="/login?redirect=/post-request" className="btn-primary text-center">Sign In</Link>
+            <Link to="/register?redirect=/post-request" className="btn-outline text-center">Create Account</Link>
           </div>
         </div>
       </div>
