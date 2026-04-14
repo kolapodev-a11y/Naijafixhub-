@@ -7,13 +7,15 @@ import { FiSend, FiAlertCircle, FiLock } from 'react-icons/fi'
 import { FaWhatsapp } from 'react-icons/fa'
 import { requestAPI } from '../../utils/api'
 import { containsScamKeywords } from '../../utils/helpers'
-import { URGENCY_OPTIONS, CATEGORIES } from '../../utils/constants'
+import { URGENCY_OPTIONS, CATEGORIES, NIGERIAN_STATES } from '../../utils/constants'
 import { useAuth } from '../../context/AuthContext'
 import toast from 'react-hot-toast'
 
 const schema = z.object({
   description: z.string().min(10, 'Please describe what you need (min 10 chars)').max(500),
-  location: z.string().min(2, 'Please enter your location'),
+  state: z.string().min(1, 'Please select your state'),
+  location: z.string().min(2, 'Please enter your town or city'),
+  streetArea: z.string().min(2, 'Please enter your street, area, or landmark'),
   urgency: z.string().min(1, 'Please select urgency'),
   whatsapp: z.string().min(7, 'Enter your WhatsApp number').max(20),
   category: z.string().optional(),
@@ -52,7 +54,11 @@ export default function SmartMatchForm() {
 
     setLoading(true)
     try {
-      await requestAPI.create(data)
+      await requestAPI.create({
+        ...data,
+        location: data.location.trim(),
+        streetArea: data.streetArea.trim(),
+      })
       setSubmitted(true)
       reset()
       toast.success('Request posted! Artisans will contact you via WhatsApp.')
@@ -144,9 +150,28 @@ export default function SmartMatchForm() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className="label">Your Location <span className="text-red-500">*</span></label>
-            <input {...register('location')} className={`input-field ${errors.location ? 'border-red-300 ring-2 ring-red-300' : ''}`} placeholder="e.g. Akure, Ondo State" />
+            <label className="label">State <span className="text-red-500">*</span></label>
+            <select {...register('state')} className={`input-field ${errors.state ? 'border-red-300 ring-2 ring-red-300' : ''}`}>
+              <option value="">— Select State —</option>
+              {NIGERIAN_STATES.filter((stateName) => stateName !== 'All States').map((stateName) => (
+                <option key={stateName} value={stateName}>{stateName}</option>
+              ))}
+            </select>
+            {errors.state && <p className="mt-1 flex items-center gap-1 text-xs text-red-500"><FiAlertCircle size={12} /> {errors.state.message}</p>}
+          </div>
+
+          <div>
+            <label className="label">Town / City <span className="text-red-500">*</span></label>
+            <input {...register('location')} className={`input-field ${errors.location ? 'border-red-300 ring-2 ring-red-300' : ''}`} placeholder="e.g. Akure" />
             {errors.location && <p className="mt-1 flex items-center gap-1 text-xs text-red-500"><FiAlertCircle size={12} /> {errors.location.message}</p>}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Street / Area / Landmark <span className="text-red-500">*</span></label>
+            <input {...register('streetArea')} className={`input-field ${errors.streetArea ? 'border-red-300 ring-2 ring-red-300' : ''}`} placeholder="e.g. Alagbaka, FUTA South Gate, Oke-Ijebu" />
+            {errors.streetArea && <p className="mt-1 flex items-center gap-1 text-xs text-red-500"><FiAlertCircle size={12} /> {errors.streetArea.message}</p>}
           </div>
 
           <div>
