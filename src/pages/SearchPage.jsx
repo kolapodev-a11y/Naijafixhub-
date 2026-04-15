@@ -4,10 +4,13 @@ import ArtisanCard from '../components/artisan/ArtisanCard'
 import { SkeletonCard } from '../components/ui/LoadingSpinner'
 import { artisanAPI } from '../utils/api'
 import { CATEGORIES, SORT_OPTIONS } from '../utils/constants'
+import { readCache, writeCache } from '../utils/cache'
 import { FiSearch, FiX, FiSliders } from 'react-icons/fi'
 import StateFilter from '../components/home/StateFilter'
 
 const LIMIT = 12
+const SEARCH_RESULTS_TTL_MS = 5 * 60 * 1000
+const buildSearchCacheKey = (params) => `naijafixhub_search:${JSON.stringify(params)}`
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -17,11 +20,30 @@ export default function SearchPage() {
   const [selectedState, setSelectedState] = useState(searchParams.get('state') || 'All States')
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || '')
   const [sortBy, setSortBy] = useState('newest')
-  const [artisans, setArtisans] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
+
+  const cacheDescriptor = useMemo(
+    () => ({
+      q: query || '',
+      state: selectedState !== 'All States' ? selectedState : '',
+      category: selectedCategory || '',
+      sort: sortBy,
+      page,
+      limit: LIMIT,
+      status: 'approved',
+    }),
+    [page, query, selectedCategory, selectedState, sortBy],
+  )
+
+  const cachedPayload = useMemo(
+    () => readCache(buildSearchCacheKey(cacheDescriptor), SEARCH_RESULTS_TTL_MS),
+    [cacheDescriptor],
+  )
+
+  const [artisans, setArtisans] = useState(cachedPayload?.artisans || [])
+  const [total, setTotal] = useState(cachedPayload?.total || 0)
+  const [loading, setLoading] = useState(!cachedPayload)
 
   useEffect(() => {
     const nextQuery = searchParams.get('q') || ''
@@ -33,6 +55,13 @@ export default function SearchPage() {
     setSelectedCategory(nextCategory)
     setPage(1)
   }, [searchKey, searchParams])
+
+  useEffect(() => {
+    if (!cachedPayload) return
+    setArtisans(cachedPayload.artisans || [])
+    setTotal(cachedPayload.total || 0)
+    setLoading(false)
+  }, [cachedPayload])
 
   const buildSearchParamPayload = useCallback((nextQuery, nextState, nextCategory) => {
     const params = {}
@@ -57,27 +86,42 @@ export default function SearchPage() {
   }, [buildSearchParamPayload, query, selectedCategory, selectedState, setSearchParams])
 
   const fetchArtisans = useCallback(async () => {
-    setLoading(true)
+    const cacheKey = buildSearchCacheKey(cacheDescriptor)
+    const cached = readCache(cacheKey, SEARCH_RESULTS_TTL_MS)
+
+    if (cached) {
+      setArtisans(cached.artisans || [])
+      setTotal(cached.total || 0)
+      setLoading(false)
+    } else {
+      setLoading(true)
+    }
+
     try {
-      const params = {
-        q: query || undefined,
-        state: selectedState !== 'All States' ? selectedState : undefined,
-        category: selectedCategory || undefined,
-        sort: sortBy,
-        page,
-        limit: LIMIT,
-        status: 'approved',
+      const { data } = await artisanAPI.getAll({
+        ...cacheDescriptor,
+        q: cacheDescriptor.q || undefined,
+        state: cacheDescriptor.state || undefined,
+        category: cacheDescriptor.category || undefined,
+      })
+
+      const nextPayload = {
+        artisans: data.artisans || [],
+        total: data.total || 0,
       }
-      const { data } = await artisanAPI.getAll(params)
-      setArtisans(data.artisans || [])
-      setTotal(data.total || 0)
+
+      setArtisans(nextPayload.artisans)
+      setTotal(nextPayload.total)
+      writeCache(cacheKey, nextPayload)
     } catch {
-      setArtisans([])
-      setTotal(0)
+      if (!cached) {
+        setArtisans([])
+        setTotal(0)
+      }
     } finally {
       setLoading(false)
     }
-  }, [page, query, selectedCategory, selectedState, sortBy])
+  }, [cacheDescriptor])
 
   useEffect(() => {
     fetchArtisans()
